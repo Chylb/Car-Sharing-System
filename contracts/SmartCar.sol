@@ -1,93 +1,202 @@
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity >=0.5.0 <0.9.0;
 
 contract SmartCar {
-    
-    enum CarStatus {
-        Idle, Busy
+    bool public clientReady;
+    bool public ownerReady;
+    uint256 public ownerDeposit;
+    uint256 public clientDeposit;
+
+    uint256 public clientBalance;
+    uint256 public ownerBalance;
+
+    bool public extraTimeTaken;
+
+    uint256 driveRequiredEndTime;
+    uint256 extraTime;
+
+    uint256 driveStartTime;
+
+    bool public carFree;
+
+    //const ownerIdentity = EthCrypto.createIdentity();
+
+    modifier clientAgrees {
+        assert(clientReady);
+        _;
     }
-    
-    enum DriverInformation {
-        None, Customer
+
+    modifier ownerAgrees {
+        assert(ownerReady);
+        _;
     }
-    
+
+    constructor() public payable {
+        require(msg.value == 5 ether, "should deposit 5 ether");
+        owner = msg.sender;
+        ownerDeposit = msg.value;
+        currentDriverInfo = DriverInformation.None;
+        currentCarStatus = CarStatus.Idle;
+        carIsReady = true;
+    }
+
+    bool allowCarUse = false;
+
+    function allowCarUsage(address _user) public onlyIfReady {
+        require(_user == owner);
+        allowCarUse = true;
+    }
+
+    bool canAccess = false;
+
+    function accessCar(address _user) public onlyIfReady {
+        require(_user == currentDriverAddress);
+        require(allowCarUse);
+        canAccess = true;
+    }
+
+    function nonAccessWithdrawal(address _user) public onlyIfReady {
+        assert(_user == currentDriverAddress);
+        assert(canAccess == false);
+        clientBalance = ownerDeposit + clientDeposit;
+        msg.sender.transfer(clientBalance);
+        ownerBalance = 0;
+    }
+
+    function endRentCar() public onlyIfReady {
+        assert(currentCarStatus == CarStatus.Busy);
+        assert(currentDriverInfo == DriverInformation.Customer);
+
+        balanceToDistribute = RATE_DAILYRENTAL - 3.5 ether;
+        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) < 4) {
+            balanceToDistribute += extraTime * RATE_DAILYRENTAL;
+        }
+
+        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) >= 4) {
+            assert(msg.sender == owner);
+            emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
+            clientBalance = 0 ether;
+            ownerBalance = clientDeposit + ownerDeposit;
+            msg.sender.transfer(ownerBalance);
+            currentDriverAddress = address(0);
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            driveStartTime = 0;
+            driveRequiredEndTime = 0;
+        } else {
+            assert(msg.sender == currentDriverAddress);
+            emit E_EndRentCar(currentDriverAddress, block.timestamp, true);
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            driveStartTime = 0;
+            driveRequiredEndTime = 0;
+            clientReady = true;
+            ownerReady = true;
+            carFree = true;
+            distributeEarnings();
+        }
+    }
+
+    function cancelBooking(address _user) public onlyIfReady {
+        if (_user == owner && allowCarUse == false) {
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            currentDriverAddress.transfer(clientDeposit);
+        } else if (_user == currentDriverAddress && canAccess == false) {
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            msg.sender.transfer(clientDeposit);
+        } else if (_user == currentDriverAddress && canAccess == true) {
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            msg.sender.transfer(clientDeposit - RATE_DAILYRENTAL);
+            owner.transfer(RATE_DAILYRENTAL);
+        } else if (_user == owner && allowCarUse == true) {
+            currentCarStatus = CarStatus.Idle;
+            currentDriverInfo = DriverInformation.None;
+            ownerDeposit = ownerDeposit - RATE_DAILYRENTAL;
+            currentDriverAddress.transfer(clientDeposit + RATE_DAILYRENTAL);
+        }
+    }
+
+    enum CarStatus {Idle, Busy}
+
+    enum DriverInformation {None, Customer}
+
     event UpdateStatus(string _msg);
-    event UserStatus(string _msg, address user, uint amount);
-    
-    event E_RentCarDaily(address _currentDriverAddress, uint _val,
-    uint _currentDriveStartTime, uint _currentDriveRequiredEndTime);
-    
-    event E_EndRentCar(address _currentDriverAddress, uint _now, bool _endWithinPeriod);
-    
+    event UserStatus(string _msg, address user, uint256 amount);
+
+    event E_RentCarDaily(
+        address _currentDriverAddress,
+        uint256 _val,
+        uint256 _currentDriveStartTime,
+        uint256 _currentDriveRequiredEndTime
+    );
+
+    event E_EndRentCar(
+        address _currentDriverAddress,
+        uint256 _now,
+        bool _endWithinPeriod
+    );
+
     modifier onlyIfReady {
         require(carIsReady, "car is not ready");
         _;
     }
-    
+
     modifier ifOwner() {
         require(owner == msg.sender, "not owner");
         _;
     }
-    
+
+    modifier ifCustomer() {
+        require(currentDriverAddress == msg.sender, "not customer");
+        _;
+    }
+
     address payable public owner;
-    
+
     bool public carIsReady;
     CarStatus public currentCarStatus;
-    
+
     DriverInformation public currentDriverInfo;
-    address public currentDriverAddress;
-    uint public currentDriveStartTime;
-    uint public currentDriveRequiredEndTime;
-    uint public balanceToDistribute = 0;
-    uint public RATE_DAILYRENTAL = 2 ether;
-    
-    constructor() public {
-        owner = msg.sender;
-        currentCarStatus = CarStatus.Idle;
-        currentDriverInfo = DriverInformation.None;
-        carIsReady=true;
-    }
-    
-    function setDailyRentalRate(uint _rate) public ifOwner {
+    address payable public currentDriverAddress;
+    uint256 public currentDriveStartTime;
+    uint256 public currentDriveRequiredEndTime;
+    uint256 public balanceToDistribute = 0;
+    uint256 public RATE_DAILYRENTAL = 5 ether;
+
+    function setDailyRentalRate(uint256 _rate) public ifOwner {
         RATE_DAILYRENTAL = _rate;
     }
-    
+
     function setCarReady(bool _ready) public ifOwner {
         carIsReady = _ready;
     }
-    
-    function rentCar() public onlyIfReady payable {
-        if(currentCarStatus == CarStatus.Idle && msg.value == RATE_DAILYRENTAL){
+
+    function rentCar() public payable onlyIfReady {
+        if (
+            currentCarStatus == CarStatus.Idle && msg.value == RATE_DAILYRENTAL
+        ) {
             currentDriverAddress = msg.sender;
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
-            currentDriveStartTime = now;
-            currentDriveRequiredEndTime = now + 1 days;
+            currentDriveStartTime = block.timestamp;
+            currentDriveRequiredEndTime = block.timestamp + 1 days;
             balanceToDistribute += msg.value - 500;
-            
-            emit E_RentCarDaily(currentDriverAddress,msg.value,
-            currentDriveStartTime,currentDriveRequiredEndTime);
+
+            emit E_RentCarDaily(
+                currentDriverAddress,
+                msg.value,
+                currentDriveStartTime,
+                currentDriveRequiredEndTime
+            );
         }
     }
-    
-    function endRentCar() public onlyIfReady {
-        assert(currentCarStatus == CarStatus.Busy);
-        assert(currentDriverInfo == DriverInformation.Customer);
-        
-        bool endWithinPeriod = now <= currentDriveRequiredEndTime;
-        emit E_EndRentCar(currentDriverAddress,now,endWithinPeriod);
-        currentDriverAddress = address(0); //null
-        currentCarStatus = CarStatus.Idle;
-        currentDriverInfo = DriverInformation.None;
-        currentDriveStartTime = 0;
-        currentDriveRequiredEndTime = 0;
-        
-        distributeEarnings();
-    }
-    
+
     function distributeEarnings() private {
-        uint amount = balanceToDistribute;
-        
-        if(owner.send(amount)){
+        uint256 amount = balanceToDistribute;
+
+        if (owner.send(amount)) {
             emit UpdateStatus("Money transferred to owner");
             balanceToDistribute = 0;
         }

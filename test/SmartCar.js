@@ -1,5 +1,6 @@
 const SmartCarContract = artifacts.require('SmartCar');
 
+const getBalance = web3.eth.getBalance;
 const toWei = web3.utils.toWei;
 const BN = web3.utils.BN;
 
@@ -33,8 +34,11 @@ function similar(x1, x2, dx) {
 contract('SmartCar', (accounts) => {
     let smartCar;
 
-    before(async () => {
+    it('should deploy', async () => {
         smartCar = await SmartCarContract.deployed();
+
+        const balance = await getBalance(smartCar.address);
+        assert(balance == toWei('5', 'ether'));
     });
 
     it('owner field contains owner', () => {
@@ -54,13 +58,13 @@ contract('SmartCar', (accounts) => {
     });
 
     it('fail car rent when deposit not correct', async () => {
-        await smartCar.rentCar({ from: accounts[1], value: web3.utils.toWei('1', 'ether') });
+        await smartCar.rentCar({ from: accounts[1], value: toWei('1', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, 0);
     });
 
     it('successful car rent', async () => {
-        await smartCar.rentCar({ from: accounts[1], value: web3.utils.toWei('2', 'ether') });
+        await smartCar.rentCar({ from: accounts[1], value: toWei('2', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[1]);
     });
