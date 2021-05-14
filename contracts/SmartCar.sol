@@ -174,6 +174,7 @@ contract SmartCar {
     }
 
     function rentCar() public payable onlyIfReady {
+        //TODO: raczej to powinno wyrzucać błąd
         if (
             currentCarStatus == CarStatus.Idle && msg.value == RATE_DAILYRENTAL
         ) {
