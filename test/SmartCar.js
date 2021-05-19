@@ -58,24 +58,37 @@ contract('SmartCar', (accounts) => {
     });
 
     it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
-        await smartCar.rentCar({ from: accounts[1], value: toWei('1', 'ether') });
-        let driver = await smartCar.currentDriverAddress.call();
-        assert.equal(driver, 0);
+        try {
+            await smartCar.rentCar({ from: accounts[2], value: toWei('1', 'ether') });
+            let driver = await smartCar.currentDriverAddress.call();
+            assert.equal(driver, 0);
+        } catch (error) {
+            assert.equal(error.reason,"5 ether required");
+            return;
+        }
+        assert(false);
     });
 
     it('Customer calls the rentCar() function and deposits needed amount', async () => {
-        await smartCar.rentCar({ from: accounts[1], value: toWei('5', 'ether') });
+        await smartCar.rentCar({ from: accounts[2], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
-        assert.equal(driver, accounts[1]);
+        assert.equal(driver, accounts[2]);
     });
 
     it('endRentCar()', async () => {
         try {
-            await smartCar.endRentCar();
+            const balance0 = await web3.eth.getBalance(accounts[0]);
+            await smartCar.endRentCar({from: accounts[2]});
+            let carReady = await smartCar.carIsReady.call();
+            assert.equal(carReady, true);
+            const actualBalance = await web3.eth.getBalance(accounts[0]);
+            const expectedBalance = sum(balance0, toWei('1.5', 'ether'), '-500');
+            assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
+            return;
         } catch (error) {
-            assert.equal(error.reason,"x");
+            assert.equal(error.reason,"inncorect reason");
             return;
         }
-        assert(false);
+
     });
 });

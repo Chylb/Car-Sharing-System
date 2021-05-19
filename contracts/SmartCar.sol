@@ -175,15 +175,15 @@ contract SmartCar {
 
     function rentCar() public payable onlyIfReady {
         //TODO: raczej to powinno wyrzucać błąd
-        if (
-            currentCarStatus == CarStatus.Idle && msg.value == RATE_DAILYRENTAL
-        ) {
+         require(msg.value == RATE_DAILYRENTAL, "5 ether required");
+         require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             currentDriverAddress = msg.sender;
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
             currentDriveRequiredEndTime = block.timestamp + 1 days;
-            balanceToDistribute += msg.value - 500;
+            //balanceToDistribute += msg.value - 500;
+            balanceToDistribute += msg.value;
 
             emit E_RentCarDaily(
                 currentDriverAddress,
@@ -191,7 +191,6 @@ contract SmartCar {
                 currentDriveStartTime,
                 currentDriveRequiredEndTime
             );
-        }
     }
 
     function distributeEarnings() private {
