@@ -63,8 +63,8 @@ contract SmartCar {
     }
 
     function endRentCar() public onlyIfReady {
-        assert(currentCarStatus == CarStatus.Busy);
-        assert(currentDriverInfo == DriverInformation.Customer);
+         require(currentCarStatus == CarStatus.Busy,"xxxx");
+         require(currentDriverInfo == DriverInformation.Customer,"xx");
 
         balanceToDistribute = RATE_DAILYRENTAL - 3.5 ether;
         if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) < 4) {
@@ -72,7 +72,7 @@ contract SmartCar {
         }
 
         if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) >= 4) {
-            assert(msg.sender == owner);
+             require(msg.sender == owner,"xx");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientBalance = 0 ether;
             ownerBalance = clientDeposit + ownerDeposit;
@@ -83,7 +83,7 @@ contract SmartCar {
             driveStartTime = 0;
             driveRequiredEndTime = 0;
         } else {
-            assert(msg.sender == currentDriverAddress);
+            require(msg.sender == currentDriverAddress, "x");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, true);
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;

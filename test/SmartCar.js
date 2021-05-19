@@ -69,14 +69,13 @@ contract('SmartCar', (accounts) => {
         assert.equal(driver, accounts[1]);
     });
 
-    // it('endRentCar()', async () => {
-    //     const balance0 = await web3.eth.getBalance(accounts[0]);
-    //     await smartCar.endRentCar();
-
-    //     const actualBalance = await web3.eth.getBalance(accounts[0]);
-    //     const expectedBalance = sum(balance0, toWei('2', 'ether'), '-500');
-
-    //     console.log(subt(actualBalance, expectedBalance));
-    //     assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
-    // });
+    it('endRentCar()', async () => {
+        try {
+            await smartCar.endRentCar();
+        } catch (error) {
+            assert.equal(error.reason,"x");
+            return;
+        }
+        assert(false);
+    });
 });
