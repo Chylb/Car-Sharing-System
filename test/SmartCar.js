@@ -91,4 +91,31 @@ contract('SmartCar', (accounts) => {
         }
 
     });
+
+    it('cancelBooking() owner car not accessed', async () => {
+        await smartCar.rentCar({ from: accounts[2], value: toWei('5', 'ether') });
+        const balance0 = await web3.eth.getBalance(accounts[2]);
+        await smartCar.cancelBooking(accounts[0]);
+        const actualBalance = await web3.eth.getBalance(accounts[2]);
+        let clientDeposit = await smartCar.clientDeposit.call();
+        const expectedBalance = sum(balance0, clientDeposit);
+        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
+    });
+
+    it('allowCarUsage() owner', async () => {
+        await smartCar.allowCarUsage(accounts[0]);
+        let allowCarUse = await smartCar.allowCarUse.call();
+        assert(allowCarUse, true);
+    });
+
+    it('allowCarUsage() not owner ', async () => {
+        try{
+            await smartCar.allowCarUsage(accounts[2]);
+            assert(false);
+        } catch (error) {
+            assert.equal(error.reason,"not owner address");
+            return;
+        }
+        assert(false);
+    });
 });

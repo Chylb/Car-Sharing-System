@@ -39,14 +39,14 @@ contract SmartCar {
         carIsReady = true;
     }
 
-    bool allowCarUse = false;
+    bool public allowCarUse = false;
 
     function allowCarUsage(address _user) public onlyIfReady {
-        require(_user == owner);
+        require(_user == owner, "not owner address");
         allowCarUse = true;
     }
 
-    bool canAccess = false;
+    bool public canAccess = false;
 
     function accessCar(address _user) public onlyIfReady {
         require(_user == currentDriverAddress);
@@ -177,6 +177,7 @@ contract SmartCar {
         //TODO: raczej to powinno wyrzucać błąd
          require(msg.value == RATE_DAILYRENTAL, "5 ether required");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
+            clientDeposit = msg.value;
             currentDriverAddress = msg.sender;
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
