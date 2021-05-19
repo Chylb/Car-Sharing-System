@@ -20,6 +20,9 @@ contract SmartCar {
 
     //const ownerIdentity = EthCrypto.createIdentity();
 
+    bool public allowCarUse = false;
+    bool public canAccess = false;
+
     modifier clientAgrees {
         assert(clientReady);
         _;
@@ -37,20 +40,19 @@ contract SmartCar {
         currentDriverInfo = DriverInformation.None;
         currentCarStatus = CarStatus.Idle;
         carIsReady = true;
+        allowCarUse = false;
+        canAccess = false;
     }
 
-    bool public allowCarUse = false;
 
     function allowCarUsage(address _user) public onlyIfReady {
         require(_user == owner, "not owner address");
         allowCarUse = true;
     }
 
-    bool public canAccess = false;
-
     function accessCar(address _user) public onlyIfReady {
-        require(_user == currentDriverAddress);
-        require(allowCarUse);
+        require(_user == currentDriverAddress, "not client address");
+        require(allowCarUse, "CarUse not allowed");
         canAccess = true;
     }
 
@@ -104,7 +106,7 @@ contract SmartCar {
         } else if (_user == currentDriverAddress && canAccess == false) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
-            msg.sender.transfer(clientDeposit);
+            currentDriverAddress.transfer(clientDeposit);
         } else if (_user == currentDriverAddress && canAccess == true) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;

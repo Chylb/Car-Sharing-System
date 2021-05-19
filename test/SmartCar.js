@@ -33,12 +33,18 @@ function similar(x1, x2, dx) {
 
 contract('SmartCar', (accounts) => {
     let smartCar;
+    var clientNum = 5;
 
     it('should deploy', async () => {
         smartCar = await SmartCarContract.deployed();
 
         const balance = await getBalance(smartCar.address);
         assert(balance == toWei('5', 'ether'));
+        carReady = await smartCar.carIsReady.call();
+        assert.equal(carReady, true);
+
+        allowCarUse = await smartCar.allowCarUse.call();
+        assert.equal(allowCarUse, false);
     });
 
     it('owner field contains owner', () => {
@@ -59,7 +65,7 @@ contract('SmartCar', (accounts) => {
 
     it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
         try {
-            await smartCar.rentCar({ from: accounts[2], value: toWei('1', 'ether') });
+            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('1', 'ether') });
             let driver = await smartCar.currentDriverAddress.call();
             assert.equal(driver, 0);
         } catch (error) {
@@ -70,15 +76,15 @@ contract('SmartCar', (accounts) => {
     });
 
     it('Customer calls the rentCar() function and deposits needed amount', async () => {
-        await smartCar.rentCar({ from: accounts[2], value: toWei('5', 'ether') });
+        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
-        assert.equal(driver, accounts[2]);
+        assert.equal(driver, accounts[clientNum]);
     });
 
     it('endRentCar()', async () => {
         try {
             const balance0 = await web3.eth.getBalance(accounts[0]);
-            await smartCar.endRentCar({from: accounts[2]});
+            await smartCar.endRentCar({from: accounts[clientNum]});
             let carReady = await smartCar.carIsReady.call();
             assert.equal(carReady, true);
             const actualBalance = await web3.eth.getBalance(accounts[0]);
@@ -92,14 +98,37 @@ contract('SmartCar', (accounts) => {
 
     });
 
+    it('allowCarUse false', async () => {
+
+        allowCarUse = await smartCar.allowCarUse.call();
+        assert.equal(allowCarUse, false);
+    });
+
     it('cancelBooking() owner car not accessed', async () => {
-        await smartCar.rentCar({ from: accounts[2], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[2]);
+        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
         await smartCar.cancelBooking(accounts[0]);
-        const actualBalance = await web3.eth.getBalance(accounts[2]);
+        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
         let clientDeposit = await smartCar.clientDeposit.call();
         const expectedBalance = sum(balance0, clientDeposit);
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
+        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
+    });
+
+    it('CanAccess false', async () => {
+
+        canAccess = await smartCar.canAccess.call();
+        assert.equal(canAccess, false);
+    });
+
+    it('cancelBooking() client car not accessed', async () => {
+
+        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
+        await smartCar.cancelBooking(accounts[clientNum]);
+        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
+        let clientDeposit = await smartCar.clientDeposit.call();
+        const expectedBalance = sum(balance0, clientDeposit);
+        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
     });
 
     it('allowCarUsage() owner', async () => {
@@ -110,12 +139,46 @@ contract('SmartCar', (accounts) => {
 
     it('allowCarUsage() not owner ', async () => {
         try{
-            await smartCar.allowCarUsage(accounts[2]);
+            await smartCar.allowCarUsage(accounts[clientNum]);
             assert(false);
         } catch (error) {
             assert.equal(error.reason,"not owner address");
             return;
         }
         assert(false);
+    });
+
+    it('allowCarUse true', async () => {
+
+        let allowCarUse = await smartCar.allowCarUse.call();
+        assert(allowCarUse, true);
+    });
+
+    it('accessCar() client', async () => {
+        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        await smartCar.accessCar(accounts[clientNum]);
+        let canAccess = await smartCar.canAccess.call();
+        await smartCar.endRentCar({from: accounts[clientNum]});
+        assert(canAccess, true);
+        
+    });
+
+    it('accessCar() not client ', async () => {
+        try{
+            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+            await smartCar.accessCar(accounts[0]);
+            assert(false);
+        } catch (error) {
+            assert.equal(error.reason,"not client address");
+            await smartCar.endRentCar({from: accounts[clientNum]});
+            return;
+        }
+        assert(false);
+    });
+
+    it('CanAccess true', async () => {
+
+        let canAccess = await smartCar.canAccess.call();
+        assert(canAccess, true);
     });
 });
