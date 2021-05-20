@@ -57,10 +57,10 @@ contract SmartCar {
     }
 
     function nonAccessWithdrawal(address _user) public onlyIfReady {
-        assert(_user == currentDriverAddress);
-        assert(canAccess == false);
+        require(_user == currentDriverAddress, "not client address");
+        require(canAccess == false, "canAccess is true");
         clientBalance = ownerDeposit + clientDeposit;
-        msg.sender.transfer(clientBalance);
+        currentDriverAddress.transfer(clientBalance);
         ownerBalance = 0;
     }
 

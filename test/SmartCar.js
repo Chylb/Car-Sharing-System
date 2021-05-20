@@ -33,7 +33,7 @@ function similar(x1, x2, dx) {
 
 contract('SmartCar', (accounts) => {
     let smartCar;
-    var clientNum = 5;
+    var clientNum = 4;
 
     it('should deploy', async () => {
         smartCar = await SmartCarContract.deployed();
@@ -120,6 +120,33 @@ contract('SmartCar', (accounts) => {
         assert.equal(canAccess, false);
     });
 
+    it('nonAccessWithdrawal() client', async () => {
+        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]);
+        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
+        let clientDeposit = await smartCar.clientDeposit.call();
+        let ownerDeposit = await smartCar.ownerDeposit.call();
+        let compensation = sum(clientDeposit, ownerDeposit);
+        const expectedBalance = sum(balance0, compensation);
+        await smartCar.endRentCar({from: accounts[clientNum]});
+        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
+    });
+
+    it('nonAccessWithdrawal() not client ', async () => {
+        try{
+            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+            await smartCar.nonAccessWithdrawal(accounts[0]);
+            assert(false);
+        } catch (error) {
+            assert.equal(error.reason,"not client address");
+            await smartCar.endRentCar({from: accounts[clientNum]});
+            return;
+        }
+        assert(false);
+    });
+    
+
     it('cancelBooking() client car not accessed', async () => {
 
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
@@ -165,6 +192,7 @@ contract('SmartCar', (accounts) => {
         const expectedBalance = sum(balance0, compensation);
         assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
     });
+
 
     it('accessCar() client', async () => {
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
