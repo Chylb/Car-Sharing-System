@@ -110,7 +110,7 @@ contract SmartCar {
         } else if (_user == currentDriverAddress && canAccess == true) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
-            msg.sender.transfer(clientDeposit - RATE_DAILYRENTAL);
+            currentDriverAddress.transfer(clientDeposit - RATE_DAILYRENTAL);
             owner.transfer(RATE_DAILYRENTAL);
         } else if (_user == owner && allowCarUse == true) {
             currentCarStatus = CarStatus.Idle;
