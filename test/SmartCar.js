@@ -247,7 +247,7 @@ contract('SmartCar', (accounts) => {
     });
 });
 
-//flow chart
+//functional flow chart
 contract('SmartCar', (accounts) => {
     let smartCar;
     var clientNum = 4;
@@ -314,7 +314,7 @@ contract('SmartCar', (accounts) => {
         //Car ready to be used
         await smartCar.allowCarUsage(accounts[0]);
         const allowCarUse = await smartCar.allowCarUse.call();
-        assert.equal(allowCarUse , true);
+        assert.equal(allowCarUse, true);
     });
 
     it('Owner does not allow car usage', async () => {
@@ -322,7 +322,7 @@ contract('SmartCar', (accounts) => {
 
         //Car not ready to be used
         const allowCarUse = await smartCar.allowCarUse.call();
-        assert.equal(allowCarUse , false);
+        assert.equal(allowCarUse, false);
     });
 
     /*
@@ -404,6 +404,80 @@ contract('SmartCar', (accounts) => {
         assert(false);
     });
 
+    /*
+    CUSTOMER HAS ACCESS TO CAR
+    */
+
+    it('customer cancels booking', async () => {
+        await Customer_has_access_to_car();
+
+        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+
+        await smartCar.cancelBooking(accounts[clientNum]); //when
+
+        //Customer pays penalty
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+    });
+
+    /*
+    CUSTOMER DOES NOT HAVE ACCESS TO CAR
+    */
+
+    it('customer calls nonAccessWithdrawal()', async () => {
+        await Car_not_ready_to_be_used();
+
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const ownerDeposit = await str(smartCar.ownerDeposit);
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
+
+        //Customer gets the total deposit 
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0, clientDeposit, ownerDeposit);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+    });
+
+    /*
+    END RENT()
+    */
+
+    it('no extra time', async () => {
+        await Customer_has_access_to_car();
+
+        await smartCar.endRentCar({ from: accounts[clientNum] }); // when
+
+        //Customer calls endRentCar(), owner and customer get their balances back
+
+        //TODO
+    });
+
+    it('less than 4 extra days', async () => {
+        await Customer_has_access_to_car();
+
+        web3.currentProvider.send({ method: "evm_increaseTime", params: [24 * 3600] }); // when
+        await smartCar.endRentCar({ from: accounts[clientNum] });
+
+        //customer calls endRentCar() and pays penalty for extra days. Both owner and customer get their balances back
+
+        //TODO
+    });
+
+    it('more than 4 extra days', async () => {
+        await Customer_has_access_to_car();
+
+        web3.currentProvider.send({ method: "evm_increaseTime", params: [5 * 24 * 3600] }); // when
+        await smartCar.endRentCar({ from: accounts[clientNum] });
+
+        //owner calls endRentCar() and gets the total deposit
+
+        //TODO
+    });
+
     const Contract_successfully_deployed = async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') });
     }
@@ -419,5 +493,11 @@ contract('SmartCar', (accounts) => {
 
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
         await smartCar.allowCarUsage(accounts[0]);
+    }
+
+    const Customer_has_access_to_car = async () => {
+        await Car_ready_to_be_used();
+
+        await smartCar.accessCar(accounts[clientNum]);
     }
 });
