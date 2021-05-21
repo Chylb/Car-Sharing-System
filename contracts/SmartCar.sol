@@ -1,6 +1,8 @@
 pragma solidity >=0.5.0 <0.9.0;
 
 contract SmartCar {
+    uint256 public CONTRACT_COST = 5 ether;
+    uint256 public MAX_DAYS = 3;
     bool public clientReady;
     bool public ownerReady;
     uint256 public ownerDeposit;
@@ -34,7 +36,7 @@ contract SmartCar {
     }
 
     constructor() public payable {
-        require(msg.value == 5 ether, "should deposit 5 ether");
+        require(msg.value == CONTRACT_COST, "should deposit 5 ether");
         owner = msg.sender;
         ownerDeposit = msg.value;
         currentDriverInfo = DriverInformation.None;
@@ -67,14 +69,15 @@ contract SmartCar {
     function endRentCar() public onlyIfReady {
          require(currentCarStatus == CarStatus.Busy,"xxxx");
          require(currentDriverInfo == DriverInformation.Customer,"xx");
+         ownerBalance = RATE_DAILYRENTAL;
 
-        balanceToDistribute = RATE_DAILYRENTAL - 3.5 ether;
-        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) < 4) {
-            balanceToDistribute += extraTime * RATE_DAILYRENTAL;
+        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) < MAX_DAYS) {
+            ownerBalance += extraTime * RATE_DAILYRENTAL;
         }
+        clientBalance = clientDeposit - ownerBalance;
 
-        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) >= 4) {
-             require(msg.sender == owner,"xx");
+        if (extraTimeTaken == true && (driveRequiredEndTime + extraTime) >= MAX_DAYS) {
+            require(msg.sender == owner,"xx");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientBalance = 0 ether;
             ownerBalance = clientDeposit + ownerDeposit;
@@ -94,6 +97,7 @@ contract SmartCar {
             clientReady = true;
             ownerReady = true;
             carFree = true;
+            currentDriverAddress.transfer(clientBalance);
             distributeEarnings();
         }
     }
@@ -111,7 +115,6 @@ contract SmartCar {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             currentDriverAddress.transfer(clientDeposit - RATE_DAILYRENTAL);
-            owner.transfer(RATE_DAILYRENTAL);
         } else if (_user == owner && allowCarUse == true) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
@@ -165,7 +168,7 @@ contract SmartCar {
     uint256 public currentDriveStartTime;
     uint256 public currentDriveRequiredEndTime;
     uint256 public balanceToDistribute = 0;
-    uint256 public RATE_DAILYRENTAL = 5 ether;
+    uint256 public RATE_DAILYRENTAL = 1 ether;
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {
         RATE_DAILYRENTAL = _rate;
@@ -176,8 +179,7 @@ contract SmartCar {
     }
 
     function rentCar() public payable onlyIfReady {
-        //TODO: raczej to powinno wyrzucać błąd
-         require(msg.value == RATE_DAILYRENTAL, "5 ether required");
+         require(msg.value == CONTRACT_COST, "5 ether required");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             clientDeposit = msg.value;
             currentDriverAddress = msg.sender;
@@ -185,8 +187,6 @@ contract SmartCar {
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
             currentDriveRequiredEndTime = block.timestamp + 1 days;
-            //balanceToDistribute += msg.value - 500;
-            balanceToDistribute += msg.value;
 
             emit E_RentCarDaily(
                 currentDriverAddress,
@@ -197,11 +197,9 @@ contract SmartCar {
     }
 
     function distributeEarnings() private {
-        uint256 amount = balanceToDistribute;
 
-        if (owner.send(amount)) {
+        if (owner.send(ownerBalance)) {
             emit UpdateStatus("Money transferred to owner");
-            balanceToDistribute = 0;
         }
     }
 }

@@ -38,215 +38,6 @@ async function str(x) {
 }
 
 
-contract('SmartCar', (accounts) => {
-    let smartCar;
-    var clientNum = 4;
-
-    it('should deploy', async () => {
-        smartCar = await SmartCarContract.deployed();
-
-        const balance = await getBalance(smartCar.address);
-        assert(balance == toWei('5', 'ether'));
-        carReady = await smartCar.carIsReady.call();
-        assert.equal(carReady, true);
-
-        allowCarUse = await smartCar.allowCarUse.call();
-        assert.equal(allowCarUse, false);
-    });
-
-    it('owner field contains owner', () => {
-        return smartCar.owner.call().then(owner => {
-            assert.equal(owner, accounts[0]);
-        })
-    });
-
-    it('setCarReady', async () => {
-        await smartCar.setCarReady(false);
-        let carReady = await smartCar.carIsReady.call();
-        assert.equal(carReady, false);
-
-        await smartCar.setCarReady(true);
-        carReady = await smartCar.carIsReady.call();
-        assert.equal(carReady, true);
-    });
-
-    it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
-        try {
-            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('1', 'ether') });
-            let driver = await smartCar.currentDriverAddress.call();
-            assert.equal(driver, 0);
-        } catch (error) {
-            assert.equal(error.reason, "5 ether required");
-            return;
-        }
-        assert(false);
-    });
-
-    it('Customer calls the rentCar() function and deposits needed amount', async () => {
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        let driver = await smartCar.currentDriverAddress.call();
-        assert.equal(driver, accounts[clientNum]);
-    });
-
-    it('endRentCar()', async () => {
-        try {
-            const balance0 = await web3.eth.getBalance(accounts[0]);
-            await smartCar.endRentCar({ from: accounts[clientNum] });
-            let carReady = await smartCar.carIsReady.call();
-            assert.equal(carReady, true);
-            const actualBalance = await web3.eth.getBalance(accounts[0]);
-            const expectedBalance = sum(balance0, toWei('1.5', 'ether'), '-500');
-            assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
-            return;
-        } catch (error) {
-            assert.equal(error.reason, "inncorect reason");
-            return;
-        }
-
-    });
-
-    it('allowCarUse false', async () => {
-
-        allowCarUse = await smartCar.allowCarUse.call();
-        assert.equal(allowCarUse, false);
-    });
-
-    it('cancelBooking() owner car not allowed', async () => {
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
-        await smartCar.cancelBooking(accounts[0]);
-        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
-        let clientDeposit = await smartCar.clientDeposit.call();
-        const expectedBalance = sum(balance0, clientDeposit);
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
-    });
-
-    it('CanAccess false', async () => {
-
-        canAccess = await smartCar.canAccess.call();
-        assert.equal(canAccess, false);
-    });
-
-    it('nonAccessWithdrawal() client', async () => {
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
-        await smartCar.nonAccessWithdrawal(accounts[clientNum]);
-        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
-        let clientDeposit = await smartCar.clientDeposit.call();
-        let ownerDeposit = await smartCar.ownerDeposit.call();
-        let compensation = sum(clientDeposit, ownerDeposit);
-        const expectedBalance = sum(balance0, compensation);
-        await smartCar.endRentCar({ from: accounts[clientNum] });
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
-    });
-
-    it('nonAccessWithdrawal() not client ', async () => {
-        try {
-            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-            await smartCar.nonAccessWithdrawal(accounts[0]);
-            assert(false);
-        } catch (error) {
-            assert.equal(error.reason, "not client address");
-            await smartCar.endRentCar({ from: accounts[clientNum] });
-            return;
-        }
-        assert(false);
-    });
-
-
-    it('cancelBooking() client car not accessed', async () => {
-
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
-        await smartCar.cancelBooking(accounts[clientNum]);
-        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
-        let clientDeposit = await smartCar.clientDeposit.call();
-        const expectedBalance = sum(balance0, clientDeposit);
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
-    });
-
-    it('allowCarUsage() owner', async () => {
-        await smartCar.allowCarUsage(accounts[0]);
-        let allowCarUse = await smartCar.allowCarUse.call();
-        assert(allowCarUse, true);
-    });
-
-    it('allowCarUsage() not owner ', async () => {
-        try {
-            await smartCar.allowCarUsage(accounts[clientNum]);
-            assert(false);
-        } catch (error) {
-            assert.equal(error.reason, "not owner address");
-            return;
-        }
-        assert(false);
-    });
-
-    it('allowCarUse true', async () => {
-
-        let allowCarUse = await smartCar.allowCarUse.call();
-        assert(allowCarUse, true);
-    });
-
-    it('cancelBooking() owner car allowed', async () => {
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
-        await smartCar.cancelBooking(accounts[0]);
-        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
-        let clientDeposit = await smartCar.clientDeposit.call();
-        let RATE_DAILYRENTAL = await smartCar.RATE_DAILYRENTAL.call();
-        let compensation = sum(clientDeposit, RATE_DAILYRENTAL);
-        const expectedBalance = sum(balance0, compensation);
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
-    });
-
-
-    it('accessCar() client', async () => {
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        await smartCar.accessCar(accounts[clientNum]);
-        let canAccess = await smartCar.canAccess.call();
-        await smartCar.endRentCar({ from: accounts[clientNum] });
-        assert(canAccess, true);
-
-    });
-
-    it('accessCar() not client ', async () => {
-        try {
-            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-            await smartCar.accessCar(accounts[0]);
-            assert(false);
-        } catch (error) {
-            assert.equal(error.reason, "not client address");
-            await smartCar.endRentCar({ from: accounts[clientNum] });
-            return;
-        }
-        assert(false);
-    });
-
-    it('CanAccess true', async () => {
-
-        let canAccess = await smartCar.canAccess.call();
-        assert(canAccess, true);
-    });
-
-    it('cancelBooking() client car accessed', async () => {
-
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
-        const balance0 = await web3.eth.getBalance(accounts[clientNum]);
-        const balanceOwner = await web3.eth.getBalance(accounts[0]);
-        await smartCar.cancelBooking(accounts[clientNum]);
-        const actualBalance = await web3.eth.getBalance(accounts[clientNum]);
-        const actualBalanceOwner = await web3.eth.getBalance(accounts[0]);
-        let clientDeposit = await smartCar.clientDeposit.call();
-        let RATE_DAILYRENTAL = await smartCar.RATE_DAILYRENTAL.call();
-        let penalty = subt(clientDeposit, RATE_DAILYRENTAL);
-        const expectedBalance = sum(balance0, penalty);
-        const expectedOwnerBalance = sum(balanceOwner, RATE_DAILYRENTAL);
-        assert(similar(actualBalance, expectedBalance, toWei('0.001', 'ether')), "client hasn't received proper amount");
-        assert(similar(actualBalanceOwner, expectedOwnerBalance, toWei('0.001', 'ether')), "owner hasn't received proper amount");
-    });
-});
-
 //functional flow chart
 contract('SmartCar', (accounts) => {
     let smartCar;
@@ -289,6 +80,7 @@ contract('SmartCar', (accounts) => {
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[clientNum]);
+        await End_renting_car();
     });
 
     it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
@@ -371,6 +163,7 @@ contract('SmartCar', (accounts) => {
         //customer has access to car
         const canAccess = await smartCar.canAccess.call();
         assert.equal(canAccess, true);
+        await End_renting_car();
     });
 
     /*
@@ -449,10 +242,22 @@ contract('SmartCar', (accounts) => {
     it('no extra time', async () => {
         await Customer_has_access_to_car();
 
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const ownerDeposit = await str(smartCar.ownerDeposit);
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+        const ownerBalance0 = await getBalance(accounts[0]);
+        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
+
         await smartCar.endRentCar({ from: accounts[clientNum] }); // when
 
         //Customer calls endRentCar(), owner and customer get their balances back
 
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL);
+        const ownerBalance = await getBalance(accounts[0]);
+        const expectedOwnerBalance = sum(ownerBalance0, RATE_DAILYRENTAL);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
         //TODO
     });
 
@@ -499,5 +304,9 @@ contract('SmartCar', (accounts) => {
         await Car_ready_to_be_used();
 
         await smartCar.accessCar(accounts[clientNum]);
+    }
+
+    const End_renting_car = async () => {
+        await smartCar.endRentCar({ from: accounts[clientNum] });
     }
 });
