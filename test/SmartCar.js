@@ -80,7 +80,6 @@ contract('SmartCar', (accounts) => {
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[clientNum]);
-        await End_renting_car();
     });
 
     it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
@@ -88,7 +87,7 @@ contract('SmartCar', (accounts) => {
 
         //rentCar() function returns error
         try {
-            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('1', 'ether') });
+            await smartCar.rentCar({ from: accounts[clientNum], value: toWei('4', 'ether') });
         } catch (error) {
             assert.equal(error.reason, "5 ether required");
             return;
@@ -163,7 +162,6 @@ contract('SmartCar', (accounts) => {
         //customer has access to car
         const canAccess = await smartCar.canAccess.call();
         assert.equal(canAccess, true);
-        await End_renting_car();
     });
 
     /*
@@ -270,6 +268,7 @@ contract('SmartCar', (accounts) => {
         //customer calls endRentCar() and pays penalty for extra days. Both owner and customer get their balances back
 
         //TODO
+        assert(true);
     });
 
     it('more than 4 extra days', async () => {
@@ -281,6 +280,7 @@ contract('SmartCar', (accounts) => {
         //owner calls endRentCar() and gets the total deposit
 
         //TODO
+        assert(true);
     });
 
     const Contract_successfully_deployed = async () => {
@@ -304,9 +304,5 @@ contract('SmartCar', (accounts) => {
         await Car_ready_to_be_used();
 
         await smartCar.accessCar(accounts[clientNum]);
-    }
-
-    const End_renting_car = async () => {
-        await smartCar.endRentCar({ from: accounts[clientNum] });
     }
 });
