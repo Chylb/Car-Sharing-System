@@ -37,6 +37,20 @@ async function str(x) {
     return res.toString();
 }
 
+advanceTime = (time) => {
+    return new Promise((resolve, reject) => {
+        web3.currentProvider.send({
+            jsonrpc: "2.0",
+            method: "evm_increaseTime",
+            params: [time],
+            id: new Date().getTime()
+        }, (err, result) => {
+            if (err) { return reject(err); }
+            return resolve(result);
+        });
+    });
+}
+
 
 //functional flow chart
 contract('SmartCar', (accounts) => {
@@ -269,7 +283,7 @@ contract('SmartCar', (accounts) => {
     it('less than 4 extra days', async () => {
         await Customer_has_access_to_car();
 
-        web3.currentProvider.send({ method: "evm_increaseTime", params: [24 * 3600] }); // when
+        await advanceTime(24 * 3600); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
 
         //customer calls endRentCar() and pays penalty for extra days. Both owner and customer get their balances back
@@ -281,7 +295,7 @@ contract('SmartCar', (accounts) => {
     it('more than 4 extra days', async () => {
         await Customer_has_access_to_car();
 
-        web3.currentProvider.send({ method: "evm_increaseTime", params: [5 * 24 * 3600] }); // when
+        await advanceTime(5 * 24 * 3600); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
 
         //owner calls endRentCar() and gets the total deposit
@@ -297,7 +311,7 @@ contract('SmartCar', (accounts) => {
     const Car_not_ready_to_be_used = async () => {
         await Contract_successfully_deployed();
 
-        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST});
+        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST });
     }
 
     const Car_ready_to_be_used = async () => {
