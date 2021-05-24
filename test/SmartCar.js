@@ -43,9 +43,19 @@ contract('SmartCar', (accounts) => {
     let smartCar;
     var clientNum = 4;
 
-    /*
-    CONTRACT DEPLOYMENT
-    */
+    let CONTRACT_COST;
+    let RATE_DAILYRENTAL;
+    let MAX_DAYS;
+
+    it('Loading constants...', async () => {
+        smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') }); //trzeba ustawić contract_cost na sztywno
+        // RATE_DAILYRENTAL = fromWei(await str(smartCar.RATE_DAILYRENTAL), 'ether');
+        // CONTRACT_COST = fromWei(await str(smartCar.CONTRACT_COST), 'ether');
+        // MAX_DAYS = fromWei(await str(smartCar.MAX_DAYS), 'ether');
+        RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
+        CONTRACT_COST = await str(smartCar.CONTRACT_COST);
+        MAX_DAYS = await str(smartCar.MAX_DAYS);
+    });
 
     it('Owner deposited needed amount', async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') });
@@ -123,7 +133,6 @@ contract('SmartCar', (accounts) => {
     it('Owner cancels booking', async () => {
         await Car_ready_to_be_used();
 
-        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
         const clientDeposit = await str(smartCar.clientDeposit);
         const ownerDeposit0 = await str(smartCar.ownerDeposit);
         const clientBalance0 = await getBalance(accounts[clientNum]);
@@ -202,7 +211,6 @@ contract('SmartCar', (accounts) => {
     it('customer cancels booking', async () => {
         await Customer_has_access_to_car();
 
-        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
         const clientDeposit = await str(smartCar.clientDeposit);
         const clientBalance0 = await getBalance(accounts[clientNum]);
 
@@ -244,7 +252,6 @@ contract('SmartCar', (accounts) => {
         const ownerDeposit = await str(smartCar.ownerDeposit);
         const clientBalance0 = await getBalance(accounts[clientNum]);
         const ownerBalance0 = await getBalance(accounts[0]);
-        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
 
         await smartCar.endRentCar({ from: accounts[clientNum] }); // when
 
@@ -284,19 +291,19 @@ contract('SmartCar', (accounts) => {
     });
 
     const Contract_successfully_deployed = async () => {
-        smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') });
+        smartCar = await SmartCarContract.new({ from: accounts[0], value: CONTRACT_COST });
     }
 
     const Car_not_ready_to_be_used = async () => {
         await Contract_successfully_deployed();
 
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST});
     }
 
     const Car_ready_to_be_used = async () => {
         await Contract_successfully_deployed();
 
-        await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
+        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST });
         await smartCar.allowCarUsage(accounts[0]);
     }
 
