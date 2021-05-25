@@ -122,6 +122,13 @@ contract SmartCar {
         }
     }
 
+    function distributeEarnings() private {
+
+        if (owner.send(ownerBalance)) {
+            emit UpdateStatus("Money transferred to owner");
+        }
+    }
+
     function cancelBooking(address _user) public onlyIfReady {
         if (_user == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
@@ -141,6 +148,10 @@ contract SmartCar {
             ownerDeposit = ownerDeposit - RATE_DAILYRENTAL;
             currentDriverAddress.transfer(clientDeposit + RATE_DAILYRENTAL);
         }
+    }
+
+    function endSmartContract() private {
+        
     }
 
     enum CarStatus {Idle, Busy}
@@ -196,12 +207,5 @@ contract SmartCar {
 
     function setCarReady(bool _ready) public ifOwner {
         carIsReady = _ready;
-    }
-
-    function distributeEarnings() private {
-
-        if (owner.send(ownerBalance)) {
-            emit UpdateStatus("Money transferred to owner");
-        }
     }
 }
