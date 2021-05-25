@@ -295,13 +295,24 @@ contract('SmartCar', (accounts) => {
     it('more than 4 extra days', async () => {
         await Customer_has_access_to_car();
 
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const ownerDeposit = await str(smartCar.ownerDeposit);
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+        const ownerBalance0 = await getBalance(accounts[0]);
+
         await advanceTime(5 * 24 * 3600); // when
-        await smartCar.endRentCar({ from: accounts[clientNum] });
+        await smartCar.endRentCar({ from: accounts[0] });
 
         //owner calls endRentCar() and gets the total deposit
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + CONTRACT_COST);
+        const ownerBalance = await getBalance(accounts[0]);
+        const expectedOwnerBalance = sum(ownerBalance0, CONTRACT_COST);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
 
         //TODO
-        assert(true);
+        //assert(true);
     });
 
     const Contract_successfully_deployed = async () => {
