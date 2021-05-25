@@ -37,6 +37,18 @@ async function str(x) {
     return res.toString();
 }
 
+function toSeconds(days) {
+    return days * 24 * 3600;
+}
+
+function fromSeconds(sec) {
+    return sec / 24 / 3600;
+}
+
+function compareMsg(msg, act, exp) {
+    return msg + " actual:" + fromWei(act, 'ether') + " expected:" + fromWei(exp, 'ether') + " difference:" + fromWei(subt(act, exp), 'ether');
+}
+
 advanceTime = (time) => {
     return new Promise((resolve, reject) => {
         web3.currentProvider.send({
@@ -63,9 +75,6 @@ contract('SmartCar', (accounts) => {
 
     it('Loading constants...', async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') }); //trzeba ustawić contract_cost na sztywno
-        // RATE_DAILYRENTAL = fromWei(await str(smartCar.RATE_DAILYRENTAL), 'ether');
-        // CONTRACT_COST = fromWei(await str(smartCar.CONTRACT_COST), 'ether');
-        // MAX_DAYS = fromWei(await str(smartCar.MAX_DAYS), 'ether');
         RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
         CONTRACT_COST = await str(smartCar.CONTRACT_COST);
         MAX_DAYS = await str(smartCar.MAX_DAYS);
@@ -277,28 +286,27 @@ contract('SmartCar', (accounts) => {
         const expectedOwnerBalance = sum(ownerBalance0, RATE_DAILYRENTAL);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
         assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
-        //TODO
     });
 
     it('less than 4 extra days', async () => {
         await Customer_has_access_to_car();
 
-        const clientDeposit = await str(smartCar.clientDeposit);
-        const ownerDeposit = await str(smartCar.ownerDeposit);
         const clientBalance0 = await getBalance(accounts[clientNum]);
         const ownerBalance0 = await getBalance(accounts[0]);
 
-        await advanceTime(2 * 24 * 3600); // when
+        const extraDays = 1;
+        await advanceTime(toSeconds(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
 
         //customer calls endRentCar() and pays penalty for extra days. Both owner and customer get their balances back
         const clientBalance = await getBalance(accounts[clientNum]);
-        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL, '-' + RATE_DAILYRENTAL);
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const penalty = (extraDays * RATE_DAILYRENTAL).toString();
+        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL, '-' + penalty);
         const ownerBalance = await getBalance(accounts[0]);
-        const expectedOwnerBalance = sum(ownerBalance0, RATE_DAILYRENTAL, RATE_DAILYRENTAL);
-        //assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
-        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
-
+        const expectedOwnerBalance = sum(ownerBalance0, RATE_DAILYRENTAL, penalty);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), compareMsg("client hasn't received proper amount", clientBalance, expectedClientBalance));
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), compareMsg("owner hasn't received proper amount", ownerBalance, expectedOwnerBalance));
     });
 
     it('more than 4 extra days', async () => {
@@ -319,9 +327,6 @@ contract('SmartCar', (accounts) => {
         const expectedOwnerBalance = sum(ownerBalance0, CONTRACT_COST);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
         assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
-
-        //TODO
-        //assert(true);
     });
 
     const Contract_successfully_deployed = async () => {
