@@ -22,6 +22,7 @@ contract SmartCar {
 
     bool public allowCarUse = false;
     bool public canAccess = false;
+    bool public contractAvailable;
 
     modifier clientAgrees {
         assert(clientReady);
@@ -35,6 +36,7 @@ contract SmartCar {
 
     constructor() public payable {
         require(msg.value == CONTRACT_COST, "should deposit 5 ether");
+        contractAvailable = true;
         owner = msg.sender;
         ownerDeposit = msg.value;
         currentDriverInfo = DriverInformation.None;
@@ -45,18 +47,21 @@ contract SmartCar {
     }
 
 
-    function allowCarUsage(address _user) public onlyIfReady {
+    function allowCarUsage(address _user) public onlyIfAvailable {
+        require(carIsReady, "car is not ready");
         require(_user == owner, "not owner address");
         allowCarUse = true;
     }
 
-    function accessCar(address _user) public onlyIfReady {
+    function accessCar(address _user) public onlyIfAvailable {
+        require(carIsReady, "car is not ready");
         require(_user == currentDriverAddress, "not client address");
         require(allowCarUse, "CarUse not allowed");
         canAccess = true;
     }
 
-    function nonAccessWithdrawal(address _user) public onlyIfReady {
+    function nonAccessWithdrawal(address _user) public onlyIfAvailable {
+        require(carIsReady, "car is not ready");
         require(_user == currentDriverAddress, "not client address");
         require(canAccess == false, "canAccess is true");
         clientBalance = ownerDeposit + clientDeposit;
@@ -64,7 +69,8 @@ contract SmartCar {
         ownerBalance = 0;
     }
 
-    function rentCar() public payable onlyIfReady {
+    function rentCar() public payable onlyIfAvailable {
+         require(carIsReady, "car is not ready");
          require(msg.value == CONTRACT_COST, "5 ether required");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             clientDeposit = msg.value;
@@ -82,7 +88,8 @@ contract SmartCar {
             );
     }
 
-    function endRentCar() public onlyIfReady {
+    function endRentCar() public onlyIfAvailable {
+         require(carIsReady, "car is not ready");
          require(currentCarStatus == CarStatus.Busy,"xxxx");
          require(currentDriverInfo == DriverInformation.Customer,"xx");
 
@@ -129,7 +136,9 @@ contract SmartCar {
         }
     }
 
-    function cancelBooking(address _user) public onlyIfReady {
+    function cancelBooking(address _user) public onlyIfAvailable {
+        require(carIsReady, "car is not ready");
+
         if (_user == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
@@ -151,7 +160,9 @@ contract SmartCar {
     }
 
     function endSmartContract() private {
-        
+        contractAvailable = false;
+        owner.transfer(ownerBalance);
+        currentDriverAddress.transfer(clientDeposit);
     }
 
     enum CarStatus {Idle, Busy}
@@ -173,6 +184,11 @@ contract SmartCar {
         uint256 _now,
         bool _endWithinPeriod
     );
+
+    modifier onlyIfAvailable {
+        require(contractAvailable, "contract not available");
+        _;
+    }
 
     modifier onlyIfReady {
         require(carIsReady, "car is not ready");
