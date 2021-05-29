@@ -113,6 +113,9 @@ contract('SmartCar', (accounts) => {
         await smartCar.rentCar({ from: accounts[clientNum], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[clientNum]);
+        const balance = await getBalance(smartCar.address);
+        const expectedBalance = sum(CONTRACT_COST, CONTRACT_COST);
+        assert.equal(balance, expectedBalance, "contract balance should be 10 ether");
     });
 
     it('Customer calls the rentCar() function and does not deposit needed amount', async () => {
@@ -165,6 +168,9 @@ contract('SmartCar', (accounts) => {
         const clientBalance = await getBalance(accounts[clientNum]);
         const expectedClientBalance = sum(clientBalance0, clientDeposit, RATE_DAILYRENTAL);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount");
+        const balance = await getBalance(smartCar.address);
+        const expectedBalance = sum(CONTRACT_COST, '-' + RATE_DAILYRENTAL);
+        assert.equal(balance, expectedBalance, "contract balance should be 4 ether");
 
         //Owner pays penalty
         const expectedOwnerDeposit = subt(ownerDeposit0, RATE_DAILYRENTAL);
@@ -184,6 +190,10 @@ contract('SmartCar', (accounts) => {
         const clientBalance = await getBalance(accounts[clientNum]);
         const expectedClientBalance = sum(clientBalance0, clientDeposit);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount");
+
+        const balance = await getBalance(smartCar.address);
+        const expectedBalance = sum(CONTRACT_COST);
+        assert.equal(balance, expectedBalance, "contract balance should be 5 ether");
     });
 
     it('customer calls accessCar()', async () => {
@@ -212,6 +222,10 @@ contract('SmartCar', (accounts) => {
         const clientBalance = await getBalance(accounts[clientNum]);
         const expectedClientBalance = sum(clientBalance0, clientDeposit);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount");
+
+        const balance = await getBalance(smartCar.address);
+        const expectedBalance = sum(CONTRACT_COST);
+        assert.equal(balance, expectedBalance, "contract balance should be 5 ether");
     });
 
     it('customer calls accessCar()', async () => {
@@ -243,6 +257,22 @@ contract('SmartCar', (accounts) => {
         const clientBalance = await getBalance(accounts[clientNum]);
         const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+
+        const balance = await getBalance(smartCar.address);
+        const expectedBalance = sum(CONTRACT_COST, RATE_DAILYRENTAL);
+        assert.equal(balance, expectedBalance, "contract balance should be 6 ether");
+    });
+
+    it('too late for booking cancellation', async () => {
+        await Customer_has_access_to_car();
+        await advanceTime(toSeconds(1));
+        try {
+            await smartCar.cancelBooking(accounts[0]);
+        } catch (error) {
+            assert.equal(error.reason, "Too late for booking cancel");
+            return;
+        }
+        assert(false);
     });
 
     /*
@@ -260,7 +290,37 @@ contract('SmartCar', (accounts) => {
 
         //Customer gets the total deposit 
         const clientBalance = await getBalance(accounts[clientNum]);
-        const expectedClientBalance = sum(clientBalance0, clientDeposit, ownerDeposit);
+        const expectedClientBalance = sum(clientBalance0, RATE_DAILYRENTAL);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+    });
+
+    it('customer calls nonAccessWithdrawal() twice in row incorrectly', async () => {
+        await Car_not_ready_to_be_used();
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
+
+        try {
+            await smartCar.nonAccessWithdrawal(accounts[clientNum]);
+        } catch (error) {
+            assert.equal(error.reason, "you have to wait at least 30 minutes between those withdraws");
+            return;
+        }
+        assert(false);
+    });
+
+    it('customer calls nonAccessWithdrawal() twice in row correctly', async () => {
+        await Car_not_ready_to_be_used();
+
+        const clientDeposit = await str(smartCar.clientDeposit);
+        const ownerDeposit = await str(smartCar.ownerDeposit);
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
+        await advanceTime(toSeconds(1));
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
+
+        //Customer gets the total deposit 
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0, RATE_DAILYRENTAL, RATE_DAILYRENTAL);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
     });
 
@@ -302,7 +362,7 @@ contract('SmartCar', (accounts) => {
         const clientBalance = await getBalance(accounts[clientNum]);
         const clientDeposit = await str(smartCar.clientDeposit);
         const penalty = (extraDays * RATE_DAILYRENTAL).toString();
-        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + RATE_DAILYRENTAL, '-' + penalty);
+        const expectedClientBalance = sum(clientBalance0, clientDeposit);
         const ownerBalance = await getBalance(accounts[0]);
         const expectedOwnerBalance = sum(ownerBalance0, RATE_DAILYRENTAL, penalty);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), compareMsg("client hasn't received proper amount", clientBalance, expectedClientBalance));
@@ -322,11 +382,11 @@ contract('SmartCar', (accounts) => {
 
         //owner calls endRentCar() and gets the total deposit
         const clientBalance = await getBalance(accounts[clientNum]);
-        const expectedClientBalance = sum(clientBalance0, clientDeposit, '-' + CONTRACT_COST);
+        const expectedClientBalance = clientBalance0;
         const ownerBalance = await getBalance(accounts[0]);
-        const expectedOwnerBalance = sum(ownerBalance0, CONTRACT_COST);
+        const expectedOwnerBalance = sum(ownerBalance0, CONTRACT_COST, clientDeposit);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
-        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount ");
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount "  + ownerBalance + " " + expectedOwnerBalance + " " + fromWei(subt(ownerBalance, expectedOwnerBalance), 'ether'));
     });
 
     const Contract_successfully_deployed = async () => {
@@ -342,8 +402,8 @@ contract('SmartCar', (accounts) => {
     const Car_ready_to_be_used = async () => {
         await Contract_successfully_deployed();
 
-        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST });
         await smartCar.allowCarUsage(accounts[0]);
+        await smartCar.rentCar({ from: accounts[clientNum], value: CONTRACT_COST });
     }
 
     const Customer_has_access_to_car = async () => {

@@ -64,9 +64,10 @@ contract SmartCar {
         require(carIsReady, "car is not ready");
         require(_user == currentDriverAddress, "not client address");
         require(canAccess == false, "canAccess is true");
-        clientBalance = ownerDeposit + clientDeposit;
-        currentDriverAddress.transfer(clientBalance);
-        ownerBalance = 0;
+        require(block.timestamp > currentWithdrawTime, "you have to wait at least 30 minutes between those withdraws");
+        ownerDeposit = ownerDeposit - RATE_DAILYRENTAL;
+        currentDriverAddress.transfer(RATE_DAILYRENTAL);
+        currentWithdrawTime = block.timestamp + (1 days / 48);
     }
 
     function rentCar() public payable onlyIfAvailable {
@@ -78,6 +79,7 @@ contract SmartCar {
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
+            currentWithdrawTime = block.timestamp;
             currentDriveRequiredEndTime = block.timestamp + 1 days;
 
             emit E_RentCarDaily(
@@ -103,18 +105,19 @@ contract SmartCar {
         if (extraTimeTaken == true &&  extraTime < MAX_DAYS) {
             ownerBalance += extraTime * RATE_DAILYRENTAL;
         }
-        clientBalance = clientDeposit - ownerBalance;
+        clientDeposit = clientDeposit - ownerBalance;
 
         if (extraTimeTaken == true && extraTime >= MAX_DAYS) {
             require(msg.sender == owner,"xx");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
-            clientBalance = 0 ether;
-            ownerBalance = clientDeposit;
-            msg.sender.transfer(ownerBalance);
+            clientDeposit = 0 ether;
+            ownerBalance = CONTRACT_COST;
+            msg.sender.transfer(CONTRACT_COST);
             currentDriverAddress = address(0);
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             driveStartTime = 0;
+            endSmartContract();
         } else {
             require(msg.sender == currentDriverAddress, "x");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, true);
@@ -124,7 +127,7 @@ contract SmartCar {
             clientReady = true;
             ownerReady = true;
             carFree = true;
-            currentDriverAddress.transfer(clientBalance);
+            currentDriverAddress.transfer(clientDeposit);
             distributeEarnings();
         }
     }
@@ -138,6 +141,8 @@ contract SmartCar {
 
     function cancelBooking(address _user) public onlyIfAvailable {
         require(carIsReady, "car is not ready");
+        require(currentCarStatus == CarStatus.Busy, "Car not Busy");
+        require(block.timestamp < currentDriveStartTime + (1 days/24), "Too late for booking cancel");
 
         if (_user == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
@@ -213,6 +218,7 @@ contract SmartCar {
     DriverInformation public currentDriverInfo;
     address payable public currentDriverAddress;
     uint256 public currentDriveStartTime;
+    uint256 public currentWithdrawTime;
     uint256 public currentDriveRequiredEndTime;
     uint256 public balanceToDistribute = 0;
     uint256 public RATE_DAILYRENTAL = 1 ether;
