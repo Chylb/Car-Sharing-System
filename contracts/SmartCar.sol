@@ -121,7 +121,7 @@ contract SmartCar {
         }
 
         currentWithdrawTime = block.timestamp + (1 days / 48);
-        if(ownerDeposit < 1 ether) {
+        if(ownerDeposit < RATE_DAILYRENTAL) {
             endSmartContract();
         }
     }
@@ -167,8 +167,7 @@ contract SmartCar {
             require(msg.sender == owner,"xx");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientDeposit = 0 ether;
-            ownerDeposit = CONTRACT_COST;
-            msg.sender.transfer(CONTRACT_COST);
+            owner.transfer(CONTRACT_COST);
             currentDriverAddress = address(0);
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
@@ -181,6 +180,7 @@ contract SmartCar {
             currentDriverInfo = DriverInformation.None;
             currentDriveStartTime = 0;
             currentDriverAddress.transfer(clientDeposit);
+            clientDeposit = 0 ether;
             owner.transfer(ownerBalance);
             currentDriverAddress = address(0);
         }
@@ -189,7 +189,7 @@ contract SmartCar {
     function cancelBooking(address _user) public onlyIfAvailable {
         require(carIsReady, "car is not ready");
         require(currentCarStatus == CarStatus.Busy, "Car not Busy");
-        require(block.timestamp < currentDriveStartTime + (1 days/24), "Too late for booking cancel");
+        require(block.timestamp < currentDriveStartTime + (1 days/8), "Too late for booking cancel");
 
         if (_user == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
@@ -218,7 +218,14 @@ contract SmartCar {
     function endSmartContract() private {
         contractAvailable = false;
         owner.transfer(ownerDeposit);
-        currentDriverAddress.transfer(clientDeposit);
+        currentDriverAddress.transfer(ownerDeposit);
+    }
+
+    function ownerEndsSmartContract() public onlyIfAvailable ifOwner {
+        require(currentCarStatus == CarStatus.Idle, "Car not Idle");
+        contractAvailable = false;
+        owner.transfer(ownerDeposit);
+        currentDriverAddress.transfer(ownerDeposit);
     }
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {

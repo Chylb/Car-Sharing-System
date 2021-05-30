@@ -187,7 +187,22 @@ contract('SmartCar', (accounts) => {
         assert.equal(driver, accounts[clientNum2]);
         const balance = await getBalance(smartCar.address);
         const expectedBalance = sum(CONTRACT_COST, CONTRACT_COST, "-" + RATE_DAILYRENTAL);
+        const ownerDeposit = await str(smartCar.ownerDeposit);
         assert.equal(balance, expectedBalance, "contract balance should be 9 ether");
+        assert.equal(ownerDeposit, toWei('4', 'ether'));
+    });
+
+    it('make malicious owner deposit be only 4 ether, he should get less when meeting malicous client', async () => {
+        await Car_ready_to_be_used();
+        const ownerBalance0 = await getBalance(accounts[0]);
+        await smartCar.cancelBooking(accounts[0]); //when
+        const ownerDeposit = await str(smartCar.ownerDeposit);
+        await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
+        await advanceTime(5 * 24 * 3600); // when
+        await smartCar.endRentCar({ from: accounts[0] });
+        const ownerBalance = await getBalance(accounts[0]);
+        const expectedOwnerBalance = sum(ownerBalance0, CONTRACT_COST, ownerDeposit);
+        assert(similar(expectedOwnerBalance, ownerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount");
     });
 
     it('customer cancels booking', async () => {
@@ -319,6 +334,28 @@ contract('SmartCar', (accounts) => {
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
     });
 
+    it('customer calls nonAccessWithdrawal() so he pays 0 ether, owner gets nothing', async () => {
+        const clientBalance0 = await getBalance(accounts[clientNum]);
+        const ownertBalance0 = await getBalance(accounts[0]);
+        
+        await advanceTime(toSeconds(1));
+        await Car_not_ready_to_be_used();
+
+        await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
+        await smartCar.allowCarUsage(accounts[0]);
+        await advanceTime(toSeconds(1));
+        await smartCar.endRentCar({ from: accounts[clientNum]});
+        const clientBalance = await getBalance(accounts[clientNum]);
+        const expectedClientBalance = sum(clientBalance0);
+        assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
+        
+        await smartCar.ownerEndsSmartContract({from: accounts[0]});
+
+        const ownerBalance = await getBalance(accounts[0]);
+        const expectedOwnerBalance = ownertBalance0
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount " + ownerBalance + " " + expectedOwnerBalance + " " + fromWei(subt(ownerBalance, expectedOwnerBalance), 'ether'));
+    });
+
     it('customer calls nonAccessWithdrawal() twice in row correctly', async () => {
         await advanceTime(toSeconds(1));
         await Car_not_ready_to_be_used();
@@ -342,15 +379,15 @@ contract('SmartCar', (accounts) => {
         const clientBalance0 = await getBalance(accounts[clientNum]);
 
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(10800);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(10800);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(10800);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(10800);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(10800);
 
         //Customer gets the total deposit 
         const clientBalance = await getBalance(accounts[clientNum]);
@@ -362,18 +399,18 @@ contract('SmartCar', (accounts) => {
         assert(contractAvailable, false);
     });
 
-    it('customer withdraw all owner deposit - contract not available - cannot rent a car', async () => {
+    it('client withdraw all owner deposit - contract not available - cannot rent a car', async () => {
         await Car_not_ready_to_be_used();
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(3600);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(3600);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(3600);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(3600);
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
-        await advanceTime(7200);
+        await advanceTime(3600);
 
         contractAvailable = await str(smartCar.contractAvailable);
         assert(contractAvailable, false);
@@ -384,7 +421,7 @@ contract('SmartCar', (accounts) => {
             assert.equal(error.reason, "contract not available");
             const balance = await getBalance(smartCar.address);
             const expectedBalance = 0;
-            assert.equal(balance, expectedBalance, "contract balance should be 0 ether");
+            assert(similar(balance, expectedBalance, toWei('0.01', 'ether')), "contract balance should be 0 ether");
             return;
         }
         assert(false);
@@ -460,6 +497,7 @@ contract('SmartCar', (accounts) => {
         await Customer_has_access_to_car();
         await advanceTime(5 * 24 * 3600); // when
         await smartCar.endRentCar({ from: accounts[0] });
+        contractAvailable = await str(smartCar.contractAvailable);
         assert(contractAvailable, false);
 
         try {
