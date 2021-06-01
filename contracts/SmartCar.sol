@@ -27,6 +27,7 @@ contract SmartCar {
     uint256 public currentWithdrawTime;
     uint256 public currentDriveRequiredEndTime;
     uint256 public RATE_DAILYRENTAL = 1 ether;
+    uint256 public CANCEL_COST = RATE_DAILYRENTAL/2;
 
     enum CarStatus {Idle, Busy}
 
@@ -88,8 +89,8 @@ contract SmartCar {
         carIsReady = true;
         allowCarUse = false;
         canAccess = false;
+        ownerReady = false;
     }
-
 
     function allowCarUsage(address _user) public onlyIfAvailable {
         require(carIsReady, "car is not ready");
@@ -107,7 +108,7 @@ contract SmartCar {
     function nonAccessWithdrawal(address _user) public onlyIfAvailable {
         require(carIsReady, "car is not ready");
         require(_user == currentDriverAddress, "not client address");
-        require(canAccess == false, "canAccess is true");
+        require(allowCarUse == false, "CarUse allowed");
         require(block.timestamp > currentWithdrawTime, "you have to wait at least 30 minutes between those withdraws");
         if(ownerDeposit > RATE_DAILYRENTAL)
         {
@@ -135,7 +136,7 @@ contract SmartCar {
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
-            currentWithdrawTime = block.timestamp;
+            currentWithdrawTime = block.timestamp + (1 days / 48);
             currentDriveRequiredEndTime = block.timestamp + 1 days;
 
             emit E_RentCarDaily(
@@ -150,6 +151,7 @@ contract SmartCar {
          require(carIsReady, "car is not ready");
          require(currentCarStatus == CarStatus.Busy,"xxxx");
          require(currentDriverInfo == DriverInformation.Customer,"xx");
+         require(canAccess, "Car was never accessed");
 
          if(block.timestamp > currentDriveRequiredEndTime) {
              extraTimeTaken = true;
@@ -202,23 +204,14 @@ contract SmartCar {
         } else if (_user == currentDriverAddress && canAccess == true) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
-            currentDriverAddress.transfer(clientDeposit - RATE_DAILYRENTAL);
-        } else if (_user == owner && allowCarUse == true) {
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
-            ownerDeposit = ownerDeposit - RATE_DAILYRENTAL;
-            currentDriverAddress.transfer(clientDeposit + RATE_DAILYRENTAL);
-
-            if(ownerDeposit < 1 ether) {
-            endSmartContract();
-            }
-        }
+            currentDriverAddress.transfer(clientDeposit - CANCEL_COST);
+        } 
     }
 
     function endSmartContract() private {
         contractAvailable = false;
         owner.transfer(ownerDeposit);
-        currentDriverAddress.transfer(ownerDeposit);
+        currentDriverAddress.transfer(clientDeposit);
     }
 
     function ownerEndsSmartContract() public onlyIfAvailable ifOwner {
