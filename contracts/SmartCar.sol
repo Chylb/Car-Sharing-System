@@ -121,7 +121,7 @@ contract SmartCar {
             ownerDeposit = 0;
         }
 
-        currentWithdrawTime = block.timestamp + (1 days / 48);
+        currentWithdrawTime = block.timestamp + 30 minutes;
         if(ownerDeposit < RATE_DAILYRENTAL) {
             endSmartContract();
         }
@@ -136,7 +136,7 @@ contract SmartCar {
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
-            currentWithdrawTime = block.timestamp + (1 days / 48);
+            currentWithdrawTime = block.timestamp + 30 minutes;
             currentDriveRequiredEndTime = block.timestamp + 1 days;
 
             emit E_RentCarDaily(
@@ -191,7 +191,7 @@ contract SmartCar {
     function cancelBooking(address _user) public onlyIfAvailable {
         require(carIsReady, "car is not ready");
         require(currentCarStatus == CarStatus.Busy, "Car not Busy");
-        require(block.timestamp < currentDriveStartTime + (1 days/8), "Too late for booking cancel");
+        require(block.timestamp < currentDriveStartTime + 3 hours, "Too late for booking cancel");
 
         if (_user == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
