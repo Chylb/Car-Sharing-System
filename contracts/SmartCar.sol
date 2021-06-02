@@ -81,7 +81,6 @@ contract SmartCar {
 
     constructor() public payable {
         require(msg.value == CONTRACT_COST, "should deposit 5 ether");
-        contractAvailable = true;
         owner = msg.sender;
         ownerDeposit = msg.value;
         currentDriverInfo = DriverInformation.None;
@@ -90,6 +89,7 @@ contract SmartCar {
         allowCarUse = false;
         canAccess = false;
         ownerReady = false;
+        contractAvailable = true;
     }
 
     function allowCarUsage(address _user) public onlyIfAvailable {
@@ -218,7 +218,7 @@ contract SmartCar {
         require(currentCarStatus == CarStatus.Idle, "Car not Idle");
         contractAvailable = false;
         owner.transfer(ownerDeposit);
-        currentDriverAddress.transfer(ownerDeposit);
+        currentDriverAddress.transfer(clientDeposit);
     }
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {

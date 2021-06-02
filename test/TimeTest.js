@@ -37,7 +37,7 @@ async function str(x) {
     return res.toString();
 }
 
-function toSeconds(days) {
+function fromDays(days) {
     return days * 24 * 3600;
 }
 

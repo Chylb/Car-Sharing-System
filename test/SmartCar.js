@@ -37,7 +37,7 @@ async function str(x) {
     return res.toString();
 }
 
-function toSeconds(days) {
+function fromDays(days) {
     return days * 24 * 3600;
 }
 
@@ -96,6 +96,9 @@ contract('SmartCar', (accounts) => {
 
         const balance = await getBalance(smartCar.address);
         assert.equal(balance, toWei('5', 'ether'), "contract balance should be 5 ether");
+
+        const contractAvailable = await smartCar.contractAvailable.call();
+        assert.equal(contractAvailable, true);
     });
 
     it('Owner did not deposit the needed amount', async () => {
@@ -283,7 +286,6 @@ contract('SmartCar', (accounts) => {
         await Car_not_ready_to_be_used();
         await advanceTime(fromMinutes(31));
         const clientBalance0 = await getBalance(accounts[clientNum]);
-
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
 
         //Customer gets the total deposit 
@@ -297,27 +299,29 @@ contract('SmartCar', (accounts) => {
         const ownertBalance0 = await getBalance(accounts[0]);
         
         await Car_not_ready_to_be_used();
-        await advanceTime(fromMinutes(32));
+        await advanceTime(fromMinutes(31));
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
         await smartCar.allowCarUsage(accounts[0]);
         await smartCar.accessCar(accounts[clientNum]);
-        await advanceTime(toSeconds(1));
+        await advanceTime(fromDays(2));
         await smartCar.endRentCar({ from: accounts[clientNum]});
         const clientBalance = await getBalance(accounts[clientNum]);
-        const expectedClientBalance = subt(clientBalance0);
+        const expectedClientBalance = subt(clientBalance0, RATE_DAILYRENTAL);
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
         
-        //await smartCar.ownerEndsSmartContract({from: accounts[0]});
-        //const ownerBalance = await getBalance(accounts[0]);
-        //const expectedOwnerBalance = sum(ownertBalance0, RATE_DAILYRENTAL);
-        //assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.01', 'ether')), "owner hasn't received proper amount " + ownerBalance + " " + expectedOwnerBalance + " " + fromWei(subt(ownerBalance, expectedOwnerBalance), 'ether'));
+        const contractAvailable = await smartCar.contractAvailable.call();
+        assert.equal(contractAvailable, true);
+        
+        await smartCar.ownerEndsSmartContract({from: accounts[0]});
+        const ownerBalance = await getBalance(accounts[0]);
+        const expectedOwnerBalance = sum(ownertBalance0, RATE_DAILYRENTAL);
+        assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.1', 'ether')), "owner hasn't received proper amount " + ownerBalance + " " + expectedOwnerBalance + " " + fromWei(subt(ownerBalance, expectedOwnerBalance), 'ether'));
     });
 
     it('customer calls nonAccessWithdrawal() twice in row correctly', async () => {
         await Car_not_ready_to_be_used();
-        await advanceTime(fromMinutes(31));
         const clientBalance0 = await getBalance(accounts[clientNum]);
-
+        await advanceTime(fromMinutes(31));
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
         await advanceTime(fromMinutes(31));
         await smartCar.nonAccessWithdrawal(accounts[clientNum]); //when
@@ -416,7 +420,7 @@ contract('SmartCar', (accounts) => {
         const ownerBalance0 = await getBalance(accounts[0]);
 
         const extraDays = 1;
-        await advanceTime(toSeconds(1 + extraDays)); // when
+        await advanceTime(fromDays(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
 
         //customer calls endRentCar() and pays penalty for extra days. Both owner and customer get their balances back
@@ -471,7 +475,7 @@ contract('SmartCar', (accounts) => {
     it('client returned car - contract available - it is possible to rent a car', async () => {
         await Customer_has_access_to_car();
         const extraDays = 1;
-        await advanceTime(toSeconds(1 + extraDays)); // when
+        await advanceTime(fromDays(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
         await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
