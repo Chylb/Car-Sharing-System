@@ -81,7 +81,7 @@ contract SmartCar {
 
     constructor() public payable {
         require(msg.value == CONTRACT_COST, "should deposit 5 ether");
-        owner = payable(msg.sender);
+        owner = msg.sender;
         ownerDeposit = msg.value;
         currentDriverInfo = DriverInformation.None;
         currentCarStatus = CarStatus.Idle;
@@ -132,7 +132,7 @@ contract SmartCar {
          require(msg.value == CONTRACT_COST, "5 ether required");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             clientDeposit = msg.value;
-            currentDriverAddress = payable(msg.sender);
+            currentDriverAddress = msg.sender;
             currentCarStatus = CarStatus.Busy;
             currentDriverInfo = DriverInformation.Customer;
             currentDriveStartTime = block.timestamp;
@@ -170,7 +170,7 @@ contract SmartCar {
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientDeposit = 0 ether;
             owner.transfer(CONTRACT_COST);
-            currentDriverAddress = payable(address(0));
+            currentDriverAddress = address(0);
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             currentDriveStartTime = 0;
@@ -184,7 +184,7 @@ contract SmartCar {
             currentDriverAddress.transfer(clientDeposit);
             clientDeposit = 0 ether;
             owner.transfer(ownerBalance);
-            currentDriverAddress = payable(address(0));
+            currentDriverAddress = address(0);
         }
     }
 
