@@ -1,4 +1,4 @@
-pragma solidity >=0.5.0 <0.9.0;
+pragma solidity >0.5.0 <=0.5.17;
 
 contract SmartCar {
     uint256 public CONTRACT_COST = 5 ether;
