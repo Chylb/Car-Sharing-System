@@ -69,6 +69,7 @@ advanceTime = (time) => {
 
 
 //functional flow chart
+//if(false)
 contract('SmartCar', (accounts) => {
     let smartCar;
     var clientNum = 4;
