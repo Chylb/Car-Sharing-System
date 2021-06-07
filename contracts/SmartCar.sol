@@ -92,22 +92,19 @@ contract SmartCar {
         contractAvailable = true;
     }
 
-    function allowCarUsage(address _user) public onlyIfAvailable {
+    function allowCarUsage() public onlyIfAvailable ifOwner{
         require(carIsReady, "car is not ready");
-        require(_user == owner, "not owner address");
         allowCarUse = true;
     }
 
-    function accessCar(address _user) public onlyIfAvailable {
+    function accessCar() public onlyIfAvailable ifCustomer {
         require(carIsReady, "car is not ready");
-        require(_user == currentDriverAddress, "not client address");
         require(allowCarUse, "CarUse not allowed");
         canAccess = true;
     }
 
-    function nonAccessWithdrawal(address _user) public onlyIfAvailable {
+    function nonAccessWithdrawal() public onlyIfAvailable ifCustomer{
         require(carIsReady, "car is not ready");
-        require(_user == currentDriverAddress, "not client address");
         require(allowCarUse == false, "CarUse allowed");
         require(block.timestamp > currentWithdrawTime, "you have to wait at least 30 minutes between those withdraws");
         if(ownerDeposit > RATE_DAILYRENTAL)
@@ -188,24 +185,27 @@ contract SmartCar {
         }
     }
 
-    function cancelBooking(address _user) public onlyIfAvailable {
+    function cancelBooking() public onlyIfAvailable {
         require(carIsReady, "car is not ready");
         require(currentCarStatus == CarStatus.Busy, "Car not Busy");
         require(block.timestamp < currentDriveStartTime + 3 hours, "Too late for booking cancel");
 
-        if (_user == owner && allowCarUse == false) {
+        if (msg.sender == owner && allowCarUse == false) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             currentDriverAddress.transfer(clientDeposit);
-        } else if (_user == currentDriverAddress && canAccess == false) {
+        } else if (msg.sender == currentDriverAddress && canAccess == false) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             currentDriverAddress.transfer(clientDeposit);
-        } else if (_user == currentDriverAddress && canAccess == true) {
+        } else if (msg.sender == currentDriverAddress && canAccess == true) {
             currentCarStatus = CarStatus.Idle;
             currentDriverInfo = DriverInformation.None;
             currentDriverAddress.transfer(clientDeposit - CANCEL_COST);
         } 
+        else {
+            require(false, "conditions not met");
+        }
     }
 
     function endSmartContract() private {
