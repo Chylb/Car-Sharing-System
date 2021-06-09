@@ -182,6 +182,9 @@ contract SmartCar {
             clientDeposit = 0 ether;
             owner.transfer(ownerBalance);
             currentDriverAddress = address(0);
+            allowCarUse = false;
+            canAccess = false;
+            carIsReady = false; 
         }
     }
 

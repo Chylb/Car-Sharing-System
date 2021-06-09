@@ -479,12 +479,29 @@ contract('SmartCar', (accounts) => {
         const extraDays = 1;
         await advanceTime(fromDays(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
+        await smartCar.setCarReady({ from: accounts[0]});
         await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[clientNum2]);
         const balance = await getBalance(smartCar.address);
         const expectedBalance = sum(CONTRACT_COST, CONTRACT_COST);
         assert.equal(balance, expectedBalance, "contract balance should be 10 ether");
+
+    });
+
+    it('client returned car - contract available - owner did not set car ready - not possible to rent a car', async () => {
+        await Customer_has_access_to_car();
+        const extraDays = 1;
+        await advanceTime(fromDays(1 + extraDays)); // when
+        await smartCar.endRentCar({ from: accounts[clientNum] });
+        
+        try {
+            await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
+        } catch (error) {
+            assert.equal(error.reason, "car is not ready");
+            return;
+        }
+        assert(false);
 
     });
 
