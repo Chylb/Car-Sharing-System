@@ -308,7 +308,7 @@ contract('SmartCar', (accounts) => {
         await advanceTime(fromDays(2));
         await smartCar.endRentCar({ from: accounts[clientNum] });
         const clientBalance = await getBalance(accounts[clientNum]);
-        const expectedClientBalance = subt(clientBalance0, RATE_DAILYRENTAL);
+        const expectedClientBalance = sum(clientBalance0, CONTRACT_COST, '-' + RATE_DAILYRENTAL );
         assert(similar(clientBalance, expectedClientBalance, toWei('0.01', 'ether')), "client hasn't received proper amount " + clientBalance + " " + expectedClientBalance + " " + fromWei(subt(clientBalance, expectedClientBalance), 'ether'));
 
         const contractAvailable = await smartCar.contractAvailable.call();
@@ -316,7 +316,7 @@ contract('SmartCar', (accounts) => {
 
         await smartCar.ownerEndsSmartContract({ from: accounts[0] });
         const ownerBalance = await getBalance(accounts[0]);
-        const expectedOwnerBalance = sum(ownertBalance0, RATE_DAILYRENTAL);
+        const expectedOwnerBalance = sum(ownertBalance0, RATE_DAILYRENTAL, CONTRACT_COST);
         assert(similar(ownerBalance, expectedOwnerBalance, toWei('0.1', 'ether')), "owner hasn't received proper amount " + ownerBalance + " " + expectedOwnerBalance + " " + fromWei(subt(ownerBalance, expectedOwnerBalance), 'ether'));
     });
 
