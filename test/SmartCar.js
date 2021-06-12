@@ -78,14 +78,14 @@ contract('SmartCar', (accounts) => {
     let CONTRACT_COST;
     let RATE_DAILYRENTAL;
     let CANCEL_COST;
-    let MAX_DAYS;
+    let MAX_EXTRA_DAY;
 
     it('Loading constants...', async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') }); //trzeba ustawić contract_cost na sztywno
         RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
         CANCEL_COST = await str(smartCar.CANCEL_COST);
         CONTRACT_COST = await str(smartCar.CONTRACT_COST);
-        MAX_DAYS = await str(smartCar.MAX_DAYS);
+        MAX_EXTRA_DAYS = await str(smartCar.MAX_EXTRA_DAYS);
     });
 
     it('Owner deposited needed amount', async () => {
@@ -113,7 +113,7 @@ contract('SmartCar', (accounts) => {
         assert(false);
     });
 
-    it('Max days, contract balance is dependend on deployment cost', async () => {
+    it('Max extra days, contract balance is dependend on deployment cost', async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('3', 'ether') });
 
         //Contract successfully deployed
@@ -123,8 +123,8 @@ contract('SmartCar', (accounts) => {
         const balance = await getBalance(smartCar.address);
         assert.equal(balance, toWei('3', 'ether'), "contract balance should be 3 ether");
 
-        MAX_DAYS1 = await str(smartCar.MAX_DAYS);
-        assert.equal(MAX_DAYS1, 1);
+        MAX_EXTRA_DAYS1 = await str(smartCar.MAX_EXTRA_DAYS);
+        assert.equal(MAX_EXTRA_DAYS1, 1);
 
         const contractAvailable = await smartCar.contractAvailable.call();
         assert.equal(contractAvailable, true);
@@ -153,7 +153,7 @@ contract('SmartCar', (accounts) => {
         try {
             await smartCar.rentCar({ from: accounts[clientNum], value: toWei('4', 'ether') });
         } catch (error) {
-            assert.equal(error.reason, "CONTRACT_COST ether required");
+            assert.equal(error.reason, "ether required: (MAX_EXTRA_DAYS + 2) ether");
             return;
         }
         assert(false);

@@ -2,7 +2,7 @@ pragma solidity >0.5.0 <=0.5.17;
 
 contract SmartCar {
     uint256 public CONTRACT_COST = 5 ether;
-    uint256 public MAX_DAYS = 3;
+    uint256 public MAX_EXTRA_DAYS = 3;
     bool public clientReady;
     bool public ownerReady;
     uint256 public ownerDeposit;
@@ -86,7 +86,7 @@ contract SmartCar {
         owner = msg.sender;
         ownerDeposit = msg.value;
         CONTRACT_COST = msg.value;
-        MAX_DAYS = (CONTRACT_COST - 2 ether)/1000000000000000000;
+        MAX_EXTRA_DAYS = (CONTRACT_COST - 2 ether)/1000000000000000000;
         currentDriverInfo = DriverInformation.None;
         currentCarStatus = CarStatus.Idle;
         carIsReady = true;
@@ -137,7 +137,7 @@ contract SmartCar {
         
          cost = uint2str(CONTRACT_COST);
          require(carIsReady, "car is not ready");
-         require(msg.value == CONTRACT_COST, "CONTRACT_COST ether required");
+         require(msg.value == CONTRACT_COST, "ether required: (MAX_EXTRA_DAYS + 2) ether");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             clientDeposit = msg.value;
             currentDriverAddress = msg.sender;
@@ -168,12 +168,12 @@ contract SmartCar {
          ownerBalance = RATE_DAILYRENTAL;
          extraTime = (block.timestamp - currentDriveRequiredEndTime) / (24 * 3600); 
 
-        if (extraTimeTaken == true &&  extraTime < MAX_DAYS) {
+        if (extraTimeTaken == true &&  extraTime < MAX_EXTRA_DAYS) {
             ownerBalance += extraTime * RATE_DAILYRENTAL;
         }
         clientDeposit = clientDeposit - ownerBalance;
 
-        if (extraTimeTaken == true && extraTime >= MAX_DAYS) {
+        if (extraTimeTaken == true && extraTime >= MAX_EXTRA_DAYS) {
             require(msg.sender == owner,"xx");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientDeposit = 0 ether;
