@@ -7,6 +7,8 @@ contract SmartCar {
     bool public ownerReady;
     uint256 public ownerDeposit;
     uint256 public clientDeposit;
+    string cost;
+    string requiredEth = " ether required";
 
     uint256 public ownerBalance;
     bool public extraTimeTaken;
@@ -80,9 +82,11 @@ contract SmartCar {
     }
 
     constructor() public payable {
-        require(msg.value == CONTRACT_COST, "should deposit 5 ether");
+        require(msg.value >= 3 ether, "should deposit atleast 3 ether");
         owner = msg.sender;
         ownerDeposit = msg.value;
+        CONTRACT_COST = msg.value;
+        MAX_DAYS = (CONTRACT_COST - 2 ether)/1000000000000000000;
         currentDriverInfo = DriverInformation.None;
         currentCarStatus = CarStatus.Idle;
         carIsReady = true;
@@ -124,9 +128,16 @@ contract SmartCar {
         }
     }
 
+    function concatenate(string calldata a, string calldata b) external pure
+        returns(string memory) {
+            return string(abi.encodePacked(a, b));
+        }
+
     function rentCar() public payable onlyIfAvailable {
+        
+         cost = uint2str(CONTRACT_COST);
          require(carIsReady, "car is not ready");
-         require(msg.value == CONTRACT_COST, "5 ether required");
+         require(msg.value == CONTRACT_COST, "CONTRACT_COST ether required");
          require(currentCarStatus == CarStatus.Idle, "Car not Idle");
             clientDeposit = msg.value;
             currentDriverAddress = msg.sender;
@@ -230,5 +241,27 @@ contract SmartCar {
 
     function setCarReady(bool _ready) public ifOwner {
         carIsReady = _ready;
+    }
+
+    function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint j = _i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len;
+        while (_i != 0) {
+            k = k-1;
+            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }

@@ -105,12 +105,29 @@ contract('SmartCar', (accounts) => {
     it('Owner did not deposit the needed amount', async () => {
         //Contract failed to deploy
         try {
-            smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('4', 'ether') });
+            smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('2', 'ether') });
         } catch (error) {
-            assert.equal(error.reason, "should deposit 5 ether");
+            assert.equal(error.reason, "should deposit atleast 3 ether");
             return;
         }
         assert(false);
+    });
+
+    it('Max days, contract balance is dependend on deployment cost', async () => {
+        smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('3', 'ether') });
+
+        //Contract successfully deployed
+        const owner = await smartCar.owner.call();
+        assert.equal(owner, accounts[0], "owner field should contain owner");
+
+        const balance = await getBalance(smartCar.address);
+        assert.equal(balance, toWei('3', 'ether'), "contract balance should be 3 ether");
+
+        MAX_DAYS1 = await str(smartCar.MAX_DAYS);
+        assert.equal(MAX_DAYS1, 1);
+
+        const contractAvailable = await smartCar.contractAvailable.call();
+        assert.equal(contractAvailable, true);
     });
 
     /*
@@ -136,7 +153,7 @@ contract('SmartCar', (accounts) => {
         try {
             await smartCar.rentCar({ from: accounts[clientNum], value: toWei('4', 'ether') });
         } catch (error) {
-            assert.equal(error.reason, "5 ether required");
+            assert.equal(error.reason, "CONTRACT_COST ether required");
             return;
         }
         assert(false);
