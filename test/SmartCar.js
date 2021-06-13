@@ -407,6 +407,26 @@ contract('SmartCar', (accounts) => {
         assert(false);
     });
 
+    it('client withdraw all owner deposit - contract not available - owner deposit needed amount - can rent a car', async () => {
+        await Car_not_ready_to_be_used();
+        await advanceTime(fromMinutes(31));
+        await smartCar.nonAccessWithdrawal({ from: accounts[clientNum] }); //when
+        await advanceTime(fromMinutes(31));
+        await smartCar.nonAccessWithdrawal({ from: accounts[clientNum] }); //when
+        await advanceTime(fromMinutes(31));
+        await smartCar.nonAccessWithdrawal({ from: accounts[clientNum] }); //when
+        await advanceTime(fromMinutes(31));
+        await smartCar.nonAccessWithdrawal({ from: accounts[clientNum] }); //when
+        await advanceTime(fromMinutes(31));
+        await smartCar.nonAccessWithdrawal({ from: accounts[clientNum] }); //when
+
+
+        await smartCar.addDepositOwner({ from: accounts[0], value: toWei('10', 'ether') })
+        await smartCar.setAvailable()
+
+        assert(contractAvailable, true);
+    });
+
 
     /*
     END RENT()
@@ -496,7 +516,7 @@ contract('SmartCar', (accounts) => {
         const extraDays = 1;
         await advanceTime(fromDays(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
-        await smartCar.setCarReady({ from: accounts[0]});
+        await smartCar.setCarReady(true,{ from: accounts[0]});
         await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
         let driver = await smartCar.currentDriverAddress.call();
         assert.equal(driver, accounts[clientNum2]);
@@ -522,23 +542,31 @@ contract('SmartCar', (accounts) => {
 
     });
 
-    it('setUnavailable', async () => {
-        await Contract_successfully_deployed();
-
-        await smartCar.setUnavailable({ from: accounts[0] });
-
-        const available = await smartCar.contractAvailable.call();
-        assert.equal(available, false);
-    });
-
     it('setMaxDays', async () => {
-        await Contract_unavailable();
 
+        await Contract_successfully_deployed();
+        await smartCar.addDepositOwner({ from: accounts[0], value: toWei('5', 'ether') })
         await smartCar.setMaxDays(7, { from: accounts[0] });
-
         const maxDays = await str(smartCar.MAX_EXTRA_DAYS);
         assert.equal(maxDays, "7");
     });
+
+    it('setMaxDays owner deposit too small', async () => {
+
+        await Contract_successfully_deployed();
+        await smartCar.addDepositOwner({ from: accounts[0], value: toWei('1', 'ether') })
+
+
+        try {
+            await smartCar.setMaxDays(7, { from: accounts[0] });
+        } catch (error) {
+            assert.equal(error.reason, "owner deposit too small");
+            return;
+        }
+        assert(false);
+    });
+
+    /*
 
     it('setAvailable', async () => {
         await Contract_unavailable();
@@ -550,15 +578,10 @@ contract('SmartCar', (accounts) => {
         const available = await smartCar.contractAvailable.call();
         assert.equal(available, true);
     });
+    */
 
     const Contract_successfully_deployed = async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: CONTRACT_COST });
-    }
-
-    const Contract_unavailable = async () => {
-        await Contract_successfully_deployed();
-
-        await smartCar.setUnavailable({ from: accounts[0] });
     }
 
     const Car_not_ready_to_be_used = async () => {

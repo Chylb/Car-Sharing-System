@@ -253,21 +253,20 @@ contract SmartCar {
     }
 
     function setMaxDays(uint256 _maxDays) public ifOwner {
-        require(currentDriverAddress == address(0), "someone already agreed");
+        require(currentCarStatus == CarStatus.Idle, "someone already agreed");
+        require(
+            ownerDeposit >= (_maxDays) * 1 ether + 2 ether,
+            "owner deposit too small"
+        );
 
         MAX_EXTRA_DAYS = _maxDays;
-    }
-
-    function setUnavailable() public ifOwner {
-        require(currentDriverAddress == address(0), "someone already agreed");
-        contractAvailable = false;
     }
 
     function setAvailable() public ifOwner {
         require(contractAvailable ==  false, "already available");
 
         require(
-            ownerDeposit > (MAX_EXTRA_DAYS) * 1 ether + 2 ether,
+            ownerDeposit >= (MAX_EXTRA_DAYS) * 1 ether + 2 ether,
             "owner deposit too small"
         );
         contractAvailable = true;
