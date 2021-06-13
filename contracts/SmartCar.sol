@@ -260,6 +260,7 @@ contract SmartCar {
         );
 
         MAX_EXTRA_DAYS = _maxDays;
+        CONTRACT_COST = _maxDays + 2 ether;
     }
 
     function setAvailable() public ifOwner {
