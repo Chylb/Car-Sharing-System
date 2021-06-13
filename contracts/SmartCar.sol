@@ -258,11 +258,16 @@ contract SmartCar {
         MAX_EXTRA_DAYS = _maxDays;
     }
 
+    function setUnavailable() public ifOwner {
+        require(currentDriverAddress == address(0), "someone already agreed");
+        contractAvailable = false;
+    }
+
     function setAvailable() public ifOwner {
         require(contractAvailable ==  false, "already available");
 
         require(
-            ownerDeposit > MAX_EXTRA_DAYS + 2 ether,
+            ownerDeposit > (MAX_EXTRA_DAYS) * 1 ether + 2 ether,
             "owner deposit too small"
         );
         contractAvailable = true;

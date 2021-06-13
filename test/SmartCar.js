@@ -78,7 +78,7 @@ contract('SmartCar', (accounts) => {
     let CONTRACT_COST;
     let RATE_DAILYRENTAL;
     let CANCEL_COST;
-    let MAX_EXTRA_DAY;
+    let MAX_EXTRA_DAYS;
 
     it('Loading constants...', async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: web3.utils.toWei('5', 'ether') }); //trzeba ustawić contract_cost na sztywno
@@ -511,7 +511,7 @@ contract('SmartCar', (accounts) => {
         const extraDays = 1;
         await advanceTime(fromDays(1 + extraDays)); // when
         await smartCar.endRentCar({ from: accounts[clientNum] });
-        
+
         try {
             await smartCar.rentCar({ from: accounts[clientNum2], value: toWei('5', 'ether') });
         } catch (error) {
@@ -522,9 +522,43 @@ contract('SmartCar', (accounts) => {
 
     });
 
+    it('setUnavailable', async () => {
+        await Contract_successfully_deployed();
+
+        await smartCar.setUnavailable({ from: accounts[0] });
+
+        const available = await smartCar.contractAvailable.call();
+        assert.equal(available, false);
+    });
+
+    it('setMaxDays', async () => {
+        await Contract_unavailable();
+
+        await smartCar.setMaxDays(7, { from: accounts[0] });
+
+        const maxDays = await str(smartCar.MAX_EXTRA_DAYS);
+        assert.equal(maxDays, "7");
+    });
+
+    it('setAvailable', async () => {
+        await Contract_unavailable();
+
+        await smartCar.setMaxDays(7, { from: accounts[0] });
+        await smartCar.addDepositOwner({ from: accounts[0], value: toWei('7', 'ether') });
+        await smartCar.setAvailable({ from: accounts[0] });
+
+        const available = await smartCar.contractAvailable.call();
+        assert.equal(available, true);
+    });
 
     const Contract_successfully_deployed = async () => {
         smartCar = await SmartCarContract.new({ from: accounts[0], value: CONTRACT_COST });
+    }
+
+    const Contract_unavailable = async () => {
+        await Contract_successfully_deployed();
+
+        await smartCar.setUnavailable({ from: accounts[0] });
     }
 
     const Car_not_ready_to_be_used = async () => {
