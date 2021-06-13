@@ -566,6 +566,24 @@ contract('SmartCar', (accounts) => {
         assert(false);
     });
 
+    it('Owner makes car unavailable', async () => {
+
+        await Contract_successfully_deployed();
+        await smartCar.setCarReady(false, {from: accounts[0]});
+        const carIsReady = await str(smartCar.carIsReady);
+        assert(carIsReady, false);
+    });
+
+    it('Owner changes daily rate', async () => {
+
+        await Contract_successfully_deployed();
+        const RATE_DAILYRENTAL0 = await str(smartCar.RATE_DAILYRENTAL);
+        assert(RATE_DAILYRENTAL0 != toWei('2', 'ether'));
+        await smartCar.setDailyRentalRate(toWei('2', 'ether'),{ from: accounts[0]});
+        const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
+        assert(RATE_DAILYRENTAL ==  toWei('2', 'ether'));
+    });
+
     /*
 
     it('setAvailable', async () => {

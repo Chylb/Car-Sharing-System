@@ -245,10 +245,12 @@ contract SmartCar {
     }
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {
+        require(currentCarStatus == CarStatus.Idle, "someone already agreed");
         RATE_DAILYRENTAL = _rate;
     }
 
     function setCarReady(bool _ready) public ifOwner {
+        require(currentCarStatus == CarStatus.Idle, "someone already agreed");
         carIsReady = _ready;
     }
 
