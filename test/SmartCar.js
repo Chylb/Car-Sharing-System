@@ -559,10 +559,10 @@ contract('SmartCar', (accounts) => {
 
         await Contract_successfully_deployed();
         const RATE_DAILYRENTAL0 = await str(smartCar.RATE_DAILYRENTAL);
-        assert(RATE_DAILYRENTAL0 != toWei('2', 'ether'));
-        await smartCar.setDailyRentalRate(toWei('2', 'ether'),{ from: accounts[0]});
+        assert(RATE_DAILYRENTAL0 != toWei('0.5', 'ether'));
+        await smartCar.setDailyRentalRate(toWei('0.5', 'ether'),{ from: accounts[0]});
         const RATE_DAILYRENTAL = await str(smartCar.RATE_DAILYRENTAL);
-        assert(RATE_DAILYRENTAL ==  toWei('2', 'ether'));
+        assert(RATE_DAILYRENTAL ==  toWei('0.5', 'ether'));
     });
 
     const Contract_successfully_deployed = async () => {

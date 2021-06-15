@@ -246,7 +246,10 @@ contract SmartCar {
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {
         require(currentCarStatus == CarStatus.Idle, "someone already agreed");
+        require(ownerDeposit >= (MAX_EXTRA_DAYS + 2) * _rate, "deposit too small");
         RATE_DAILYRENTAL = _rate;
+        CANCEL_COST = RATE_DAILYRENTAL / 2;
+        CONTRACT_COST = (MAX_EXTRA_DAYS + 2) * RATE_DAILYRENTAL;
     }
 
     function setCarReady(bool _ready) public ifOwner {
@@ -257,12 +260,12 @@ contract SmartCar {
     function setMaxDays(uint256 _maxDays) public ifOwner {
         require(currentCarStatus == CarStatus.Idle, "someone already agreed");
         require(
-            ownerDeposit >= (_maxDays) * 1 ether + 2 ether,
+            ownerDeposit >= ((_maxDays+2) * RATE_DAILYRENTAL),
             "owner deposit too small"
         );
 
         MAX_EXTRA_DAYS = _maxDays;
-        CONTRACT_COST = _maxDays + 2 ether;
+        CONTRACT_COST = (_maxDays + 2) * RATE_DAILYRENTAL;
     }
 
     function addDepositOwner() public payable ifOwner {
