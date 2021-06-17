@@ -7,8 +7,6 @@ contract SmartCar {
     bool public ownerReady;
     uint256 public ownerDeposit;
     uint256 public clientDeposit;
-    string cost;
-    string requiredEth = " ether required";
 
     uint256 public ownerBalance;
     bool public extraTimeTaken;
@@ -71,28 +69,24 @@ contract SmartCar {
         _;
     }
 
-    modifier clientAgrees {
-        assert(clientReady);
-        _;
+    function resetCarPermissions() internal {
+        carIsReady = false;
+        allowCarUse = false;
+        canAccess = false;
+        currentCarStatus = CarStatus.Idle;
+        currentDriverInfo = DriverInformation.None;
     }
-
-    modifier ownerAgrees {
-        assert(ownerReady);
-        _;
-    }
+  
 
     constructor() public payable {
         require(msg.value >= 3 ether, "should deposit atleast 3 ether");
         owner = msg.sender;
         ownerDeposit = msg.value;
         CONTRACT_COST = msg.value;
-        MAX_EXTRA_DAYS = (CONTRACT_COST - 2 ether) / 1000000000000000000;
-        currentDriverInfo = DriverInformation.None;
-        currentCarStatus = CarStatus.Idle;
+        RATE_DAILYRENTAL = 1 ether;
+        MAX_EXTRA_DAYS = (CONTRACT_COST - 2 ether) / 1 ether;
+        resetCarPermissions();
         carIsReady = true;
-        allowCarUse = false;
-        canAccess = false;
-        ownerReady = false;
         contractAvailable = true;
     }
 
@@ -102,19 +96,17 @@ contract SmartCar {
     }
 
     function accessCar() public onlyIfAvailable ifCustomer {
-        require(carIsReady, "car is not ready");
         require(allowCarUse, "CarUse not allowed");
         canAccess = true;
     }
 
     function nonAccessWithdrawal() public onlyIfAvailable ifCustomer {
-        require(carIsReady, "car is not ready");
         require(allowCarUse == false, "CarUse allowed");
         require(
-            block.timestamp > currentWithdrawTime,
+            block.timestamp >= currentWithdrawTime,
             "you have to wait at least 30 minutes between those withdraws"
         );
-        if (ownerDeposit > RATE_DAILYRENTAL) {
+        if (ownerDeposit >= RATE_DAILYRENTAL) {
             ownerDeposit = ownerDeposit - RATE_DAILYRENTAL;
             currentDriverAddress.transfer(RATE_DAILYRENTAL);
         } else {
@@ -128,16 +120,7 @@ contract SmartCar {
         }
     }
 
-    function concatenate(string calldata a, string calldata b)
-        external
-        pure
-        returns (string memory)
-    {
-        return string(abi.encodePacked(a, b));
-    }
-
     function rentCar() public payable onlyIfAvailable {
-        cost = uint2str(CONTRACT_COST);
         require(carIsReady, "car is not ready");
         require(
             msg.value == CONTRACT_COST,
@@ -161,9 +144,7 @@ contract SmartCar {
     }
 
     function endRentCar() public onlyIfAvailable {
-        require(carIsReady, "car is not ready");
         require(currentCarStatus == CarStatus.Busy, "xxxx");
-        require(currentDriverInfo == DriverInformation.Customer, "xx");
         require(canAccess, "Car was never accessed");
 
         if (block.timestamp > currentDriveRequiredEndTime) {
@@ -185,29 +166,19 @@ contract SmartCar {
             emit E_EndRentCar(currentDriverAddress, block.timestamp, false);
             clientDeposit = 0 ether;
             owner.transfer(CONTRACT_COST);
-            currentDriverAddress = address(0);
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
-            currentDriveStartTime = 0;
             endSmartContract();
         } else {
             require(msg.sender == currentDriverAddress, "x");
             emit E_EndRentCar(currentDriverAddress, block.timestamp, true);
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
-            currentDriveStartTime = 0;
             currentDriverAddress.transfer(clientDeposit);
             clientDeposit = 0 ether;
             owner.transfer(ownerBalance);
-            currentDriverAddress = address(0);
-            allowCarUse = false;
-            canAccess = false;
-            carIsReady = false;
+            resetCarPermissions();
         }
+
     }
 
     function cancelBooking() public onlyIfAvailable {
-        require(carIsReady, "car is not ready");
         require(currentCarStatus == CarStatus.Busy, "Car not Busy");
         require(
             block.timestamp < currentDriveStartTime + 3 hours,
@@ -215,16 +186,13 @@ contract SmartCar {
         );
 
         if (msg.sender == owner && allowCarUse == false) {
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
+            resetCarPermissions();
             currentDriverAddress.transfer(clientDeposit);
         } else if (msg.sender == currentDriverAddress && canAccess == false) {
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
+            resetCarPermissions();
             currentDriverAddress.transfer(clientDeposit);
         } else if (msg.sender == currentDriverAddress && canAccess == true) {
-            currentCarStatus = CarStatus.Idle;
-            currentDriverInfo = DriverInformation.None;
+            resetCarPermissions();
             currentDriverAddress.transfer(clientDeposit - CANCEL_COST);
         } else {
             require(false, "conditions not met");
@@ -270,31 +238,5 @@ contract SmartCar {
 
     function addDepositOwner() public payable ifOwner {
         ownerDeposit += msg.value;
-    }
-
-    function uint2str(uint256 _i)
-        internal
-        pure
-        returns (string memory _uintAsString)
-    {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len;
-        while (_i != 0) {
-            k = k - 1;
-            uint8 temp = (48 + uint8(_i - (_i / 10) * 10));
-            bytes1 b1 = bytes1(temp);
-            bstr[k] = b1;
-            _i /= 10;
-        }
-        return string(bstr);
     }
 }
