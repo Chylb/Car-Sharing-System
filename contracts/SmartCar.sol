@@ -36,9 +36,11 @@ contract SmartCar {
     event UpdateStatus(string _msg);
     event UserStatus(string _msg, address user, uint256 amount);
 
+    // dodać max days tutaj i przy emitowaniu
     event E_RentCarDaily(
         address _currentDriverAddress,
         uint256 _val,
+        uint256 _extra_days,
         uint256 _currentDriveStartTime,
         uint256 _currentDriveRequiredEndTime
     );
@@ -75,6 +77,7 @@ contract SmartCar {
         canAccess = false;
         currentCarStatus = CarStatus.Idle;
         currentDriverInfo = DriverInformation.None;
+        currentDriverAddress = address(0);
     }
   
 
@@ -115,6 +118,7 @@ contract SmartCar {
         }
 
         currentWithdrawTime = block.timestamp + 30 minutes;
+
         if (ownerDeposit < RATE_DAILYRENTAL) {
             endSmartContract();
         }
@@ -137,6 +141,7 @@ contract SmartCar {
 
         emit E_RentCarDaily(
             currentDriverAddress,
+            MAX_EXTRA_DAYS,
             msg.value,
             currentDriveStartTime,
             currentDriveRequiredEndTime
@@ -186,14 +191,14 @@ contract SmartCar {
         );
 
         if (msg.sender == owner && allowCarUse == false) {
-            resetCarPermissions();
             currentDriverAddress.transfer(clientDeposit);
+            resetCarPermissions();
         } else if (msg.sender == currentDriverAddress && canAccess == false) {
-            resetCarPermissions();
             currentDriverAddress.transfer(clientDeposit);
-        } else if (msg.sender == currentDriverAddress && canAccess == true) {
             resetCarPermissions();
+        } else if (msg.sender == currentDriverAddress && canAccess == true) {
             currentDriverAddress.transfer(clientDeposit - CANCEL_COST);
+            resetCarPermissions();
         } else {
             require(false, "conditions not met");
         }
