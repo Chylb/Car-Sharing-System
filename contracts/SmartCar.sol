@@ -3,6 +3,7 @@ pragma solidity >0.5.0 <=0.5.17;
 contract SmartCar {
     uint256 public CONTRACT_COST = 5 ether;
     uint256 public MAX_EXTRA_DAYS = 3;
+    uint256 public BASIC_COST = 2;
     bool public clientReady;
     bool public ownerReady;
     uint256 public ownerDeposit;
@@ -82,12 +83,12 @@ contract SmartCar {
   
 
     constructor() public payable {
-        require(msg.value >= 3 ether, "should deposit atleast 3 ether");
+        require(msg.value >= (BASIC_COST+1) * 1 ether, "should deposit atleast 3 ether");
         owner = msg.sender;
         ownerDeposit = msg.value;
         CONTRACT_COST = msg.value;
         RATE_DAILYRENTAL = 1 ether;
-        MAX_EXTRA_DAYS = (CONTRACT_COST - 2 ether) / 1 ether;
+        MAX_EXTRA_DAYS = (CONTRACT_COST - BASIC_COST * 1 ether) / 1 ether;
         resetCarPermissions();
         carIsReady = true;
         contractAvailable = true;
@@ -219,10 +220,10 @@ contract SmartCar {
 
     function setDailyRentalRate(uint256 _rate) public ifOwner {
         require(currentCarStatus == CarStatus.Idle, "someone already agreed");
-        require(ownerDeposit >= (MAX_EXTRA_DAYS + 2) * _rate, "deposit too small");
+        require(ownerDeposit >= (MAX_EXTRA_DAYS + BASIC_COST) * _rate, "deposit too small");
         RATE_DAILYRENTAL = _rate;
         CANCEL_COST = RATE_DAILYRENTAL / 2;
-        CONTRACT_COST = (MAX_EXTRA_DAYS + 2) * RATE_DAILYRENTAL;
+        CONTRACT_COST = (MAX_EXTRA_DAYS + BASIC_COST) * RATE_DAILYRENTAL;
     }
 
     function setCarReady(bool _ready) public ifOwner {
@@ -233,12 +234,12 @@ contract SmartCar {
     function setMaxDays(uint256 _maxDays) public ifOwner {
         require(currentCarStatus == CarStatus.Idle, "someone already agreed");
         require(
-            ownerDeposit >= ((_maxDays+2) * RATE_DAILYRENTAL),
+            ownerDeposit >= ((_maxDays + BASIC_COST) * RATE_DAILYRENTAL),
             "owner deposit too small"
         );
 
         MAX_EXTRA_DAYS = _maxDays;
-        CONTRACT_COST = (_maxDays + 2) * RATE_DAILYRENTAL;
+        CONTRACT_COST = (_maxDays + BASIC_COST) * RATE_DAILYRENTAL;
     }
 
     function addDepositOwner() public payable ifOwner {
